@@ -1,0 +1,205 @@
+{
+  "dataset": {
+    "rows": 100000,
+    "train_rows": 80000,
+    "test_rows": 20000,
+    "features": [
+      "Height",
+      "Weight",
+      "BMI",
+      "Gender_Code",
+      "Skin_Tone_Code"
+    ],
+    "style_classes": [
+      "Athletic_Build",
+      "Average_Fit",
+      "Curvy_Chic",
+      "Plus_Comfort",
+      "Slim_Fit"
+    ],
+    "color_classes": [
+      "Bold_Brights",
+      "Earth_Tones",
+      "Jewel_Tones",
+      "Muted_Pastels",
+      "Neutral_Classic"
+    ]
+  },
+  "classifiers": {
+    "RandomForest": {
+      "style": {
+        "accuracy": 0.92295,
+        "f1_weighted": 0.923126,
+        "f1_macro": 0.920145,
+        "precision_weighted": 0.924688,
+        "recall_weighted": 0.92295,
+        "roc_auc_weighted": 0.994221
+      },
+      "color": {
+        "accuracy": 0.58115,
+        "f1_weighted": 0.430698,
+        "f1_macro": 0.445395,
+        "precision_weighted": 0.438815,
+        "recall_weighted": 0.58115,
+        "roc_auc_weighted": 0.839005
+      },
+      "style_train_time_s": 4.55,
+      "color_train_time_s": 5.27
+    },
+    "ExtraTrees": {
+      "style": {
+        "accuracy": 0.91465,
+        "f1_weighted": 0.914848,
+        "f1_macro": 0.91327,
+        "precision_weighted": 0.920203,
+        "recall_weighted": 0.91465,
+        "roc_auc_weighted": 0.994277
+      },
+      "color": {
+        "accuracy": 0.5819,
+        "f1_weighted": 0.430766,
+        "f1_macro": 0.445493,
+        "precision_weighted": 0.452586,
+        "recall_weighted": 0.5819,
+        "roc_auc_weighted": 0.838963
+      },
+      "style_train_time_s": 2.24,
+      "color_train_time_s": 2.17
+    },
+    "GradientBoosting": {
+      "style": {
+        "accuracy": 0.92665,
+        "f1_weighted": 0.926595,
+        "f1_macro": 0.922749,
+        "precision_weighted": 0.926627,
+        "recall_weighted": 0.92665,
+        "roc_auc_weighted": 0.994359
+      },
+      "color": {
+        "accuracy": 0.57785,
+        "f1_weighted": 0.438361,
+        "f1_macro": 0.452189,
+        "precision_weighted": 0.489936,
+        "recall_weighted": 0.57785,
+        "roc_auc_weighted": 0.838471
+      },
+      "style_train_time_s": 53.92,
+      "color_train_time_s": 59.77
+    }
+  },
+  "cross_validation_5fold": {
+    "classifier": "GradientBoosting",
+    "style": {
+      "accuracy": {
+        "mean": 0.92954,
+        "std": 0.000635,
+        "folds": [
+          0.9298,
+          0.9297,
+          0.93045,
+          0.92855,
+          0.9292
+        ]
+      },
+      "f1_weighted": {
+        "mean": 0.929531,
+        "std": 0.00064,
+        "folds": [
+          0.929811,
+          0.929688,
+          0.930448,
+          0.928551,
+          0.929155
+        ]
+      },
+      "precision_weighted": {
+        "mean": 0.929583,
+        "std": 0.00065,
+        "folds": [
+          0.929975,
+          0.929696,
+          0.930461,
+          0.928561,
+          0.929219
+        ]
+      },
+      "recall_weighted": {
+        "mean": 0.92954,
+        "std": 0.000635,
+        "folds": [
+          0.9298,
+          0.9297,
+          0.93045,
+          0.92855,
+          0.9292
+        ]
+      }
+    },
+    "color": {
+      "accuracy": {
+        "mean": 0.58063,
+        "std": 0.000432,
+        "folds": [
+          0.5813,
+          0.58,
+          0.58045,
+          0.58085,
+          0.58055
+        ]
+      },
+      "f1_weighted": {
+        "mean": 0.42937,
+        "std": 0.000327,
+        "folds": [
+          0.429791,
+          0.428991,
+          0.429534,
+          0.429554,
+          0.42898
+        ]
+      },
+      "precision_weighted": {
+        "mean": 0.466197,
+        "std": 0.028487,
+        "folds": [
+          0.511017,
+          0.446857,
+          0.480732,
+          0.464393,
+          0.427985
+        ]
+      },
+      "recall_weighted": {
+        "mean": 0.58063,
+        "std": 0.000432,
+        "folds": [
+          0.5813,
+          0.58,
+          0.58045,
+          0.58085,
+          0.58055
+        ]
+      }
+    }
+  },
+  "best_models": {
+    "style": {
+      "classifier": "GradientBoosting",
+      "accuracy": 0.92665,
+      "f1_weighted": 0.926595,
+      "f1_macro": 0.922749,
+      "precision_weighted": 0.926627,
+      "recall_weighted": 0.92665,
+      "roc_auc_weighted": 0.994359
+    },
+    "color": {
+      "classifier": "ExtraTrees",
+      "accuracy": 0.5819,
+      "f1_weighted": 0.430766,
+      "f1_macro": 0.445493,
+      "precision_weighted": 0.452586,
+      "recall_weighted": 0.5819,
+      "roc_auc_weighted": 0.838963
+    }
+  }
+}

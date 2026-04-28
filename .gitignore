@@ -1,0 +1,42 @@
+# Python virtual environments
+backend/venv/
+viton-hd/Include/
+viton-hd/Lib/
+viton-hd/Scripts/
+viton-hd/share/
+viton-hd/viton38_env/
+viton-hd/pyvenv.cfg
+
+# Python cache
+**/__pycache__/
+*.pyc
+*.pyo
+
+# Node.js
+frontend/node_modules/
+
+# Database (contains user data)
+*.db
+
+# Large model/checkpoint files (exceed GitHub 100MB limit)
+viton-hd/checkpoints/*.pth
+viton-hd/checkpoints/*.zip
+
+# Large dataset files
+viton-hd/datasets/viton_hd.zip
+viton-hd/datasets/test/
+viton-hd/datasets/train/
+viton-hd/datasets/~export/
+
+# Generated/debug results
+viton-hd/results/
+viton-hd/evaluation_results/
+
+# Uploaded user files
+backend/backend/uploads/
+
+# Logs
+*.log
+
+# Backup files
+*.backup
