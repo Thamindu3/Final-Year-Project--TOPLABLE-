@@ -8,7 +8,10 @@ import numpy as np
 import pickle, os, time, json, warnings
 warnings.filterwarnings("ignore")
 
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, ExtraTreesClassifier
+from sklearn.ensemble import (
+    RandomForestClassifier, GradientBoostingClassifier,
+    ExtraTreesClassifier, HistGradientBoostingClassifier,
+)
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_validate
 from sklearn.metrics import (
     accuracy_score, classification_report, confusion_matrix,
@@ -91,9 +94,10 @@ print(f"  Test  rows   : {len(X_te):,}")
 # the classifier upweights rare classes so Bold_Brights / Muted_Pastels
 # are no longer completely ignored.
 CLASSIFIERS = {
-    "RandomForest"      : RandomForestClassifier(n_estimators=200, max_depth=12, random_state=42, n_jobs=-1, class_weight="balanced"),
-    "ExtraTrees"        : ExtraTreesClassifier(n_estimators=200, max_depth=12, random_state=42, n_jobs=-1, class_weight="balanced"),
-    "GradientBoosting"  : GradientBoostingClassifier(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42),
+    "RandomForest"        : RandomForestClassifier(n_estimators=200, max_depth=12, random_state=42, n_jobs=-1, class_weight="balanced"),
+    "ExtraTrees"          : ExtraTreesClassifier(n_estimators=200, max_depth=12, random_state=42, n_jobs=-1, class_weight="balanced"),
+    "GradientBoosting"    : GradientBoostingClassifier(n_estimators=100, max_depth=5, learning_rate=0.1, random_state=42),
+    "HistGradientBoosting": HistGradientBoostingClassifier(max_iter=300, max_depth=6, learning_rate=0.08, random_state=42),
 }
 
 
@@ -197,8 +201,10 @@ for clf_name, clf_proto in CLASSIFIERS.items():
         best_style_model = clf_style
         best_style_name  = clf_name
 
-    if cm_["accuracy"] > best_color_acc:
-        best_color_acc   = cm_["accuracy"]
+    # Use F1-macro for color selection: better than raw accuracy
+    # when class sizes differ, as it treats each palette equally.
+    if cm_["f1_macro"] > best_color_acc:
+        best_color_acc   = cm_["f1_macro"]
         best_color_model = clf_color
         best_color_name  = clf_name
 

@@ -150,51 +150,6 @@ const AboutPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── TEAM SECTION ── */}
-      <section style={teamSectionStyle}>
-        <div style={teamHeaderStyle}>
-          <p style={sectionOverlineStyle}>The Team</p>
-          <h2 style={sectionTitleStyle}>
-            Built by Students,
-            <br />
-            <em>For the Future</em>
-          </h2>
-        </div>
-
-        <div style={teamContentStyle}>
-          <p style={bodyTextStyle}>
-            This project was developed as part of the PUSL3190 Computing Project at the University
-            of Plymouth, supervised by Miss. Chathurma Wijesinghe. It represents months of research,
-            development, and testing to create a functional prototype that demonstrates how AI can
-            transform the online fashion retail experience.
-          </p>
-          <p style={bodyTextStyle}>
-            The goal was not just to build a working system - it was to prove that advanced
-            e-commerce features can be implemented affordably using open-source tools, making them
-            accessible to local businesses who need them most.
-          </p>
-
-          <div style={teamMetaStyle}>
-            <div style={teamMetaItemStyle}>
-              <p style={teamMetaLabelStyle}>Project</p>
-              <p style={teamMetaValueStyle}>PUSL3190 Computing Project</p>
-            </div>
-            <div style={teamMetaItemStyle}>
-              <p style={teamMetaLabelStyle}>Supervisor</p>
-              <p style={teamMetaValueStyle}>Miss. Chathurma Wijesinghe</p>
-            </div>
-            <div style={teamMetaItemStyle}>
-              <p style={teamMetaLabelStyle}>Institution</p>
-              <p style={teamMetaValueStyle}>University of Plymouth</p>
-            </div>
-            <div style={teamMetaItemStyle}>
-              <p style={teamMetaLabelStyle}>Program</p>
-              <p style={teamMetaValueStyle}>BSc (Hons) Computer Science</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── RESEARCH SECTION ── */}
       <section style={researchSectionStyle}>
         <div style={researchInnerStyle}>

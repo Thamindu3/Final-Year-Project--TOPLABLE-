@@ -38,7 +38,6 @@ const Navbar: React.FC = () => {
           <Link to="/" className="nb-link">Home</Link>
           <Link to="/products" className="nb-link">Products</Link>
           <Link to="/virtual-tryon" className="nb-link">Try On</Link>
-          <Link to="/recommendations" className="nb-link">Recommendations</Link>
           <Link to="/body-recommend" className="nb-link">Body Fit</Link>
           <Link to="/about" className="nb-link">About</Link>
         </nav>

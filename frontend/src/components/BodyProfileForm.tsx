@@ -377,11 +377,18 @@ const BodyProfileForm: React.FC = () => {
                       )}
                     </div>
                     <span style={styles.catBadge}>{product.category}</span>
-                    {product.match_score !== undefined && product.match_score > 0 && (
-                      <span style={styles.matchBadge}>
-                        ✓ {product.match_score > 2 ? "Best" : "Good"} Match
-                      </span>
-                    )}
+                    {product.match_score !== undefined && product.match_score > 0 && (() => {
+                      const primaryColors = new Set((result.palette_colors || []).map(c => c.toLowerCase()));
+                      const isBestMatch = (product.matching_colors || []).some(c => primaryColors.has(c.toLowerCase()));
+                      return (
+                        <span style={{
+                          ...styles.matchBadge,
+                          background: isBestMatch ? 'rgba(26,26,26,0.82)' : '#c9a96e',
+                        }}>
+                          ✓ {isBestMatch ? "Best" : "Good"} Match
+                        </span>
+                      );
+                    })()}
                     {/* Hover overlay with action buttons */}
                     <div style={styles.overlay} className="body-overlay">
                       <button

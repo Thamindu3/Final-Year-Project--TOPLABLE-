@@ -173,20 +173,7 @@ const HomePage: React.FC = () => {
           border-color: #c9a96e;
         }
 
-        .viton-footer-link {
-          color: rgba(255,255,255,0.75);
-          text-decoration: none;
-          font-family: 'Montserrat', sans-serif;
-          font-size: 11px;
-          letter-spacing: 2px;
-          text-transform: uppercase;
-          transition: color 0.25s ease, opacity 0.25s ease;
-        }
-        .viton-footer-link:hover {
-          color: #c9a96e;
-        }
-
-        .viton-login-btn {
+.viton-login-btn {
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -305,7 +292,6 @@ const HomePage: React.FC = () => {
           <Link to="/" className="viton-nav-link">Home</Link>
           <Link to="/products" className="viton-nav-link">Products</Link>
           <Link to="/virtual-tryon" className="viton-nav-link">Try On</Link>
-          <Link to="/recommendations" className="viton-nav-link">Recommendations</Link>
           <Link to="/body-recommend" className="viton-nav-link">Body Fit</Link>
           <Link to="/about" className="viton-nav-link">About</Link>
         </nav>
@@ -493,80 +479,6 @@ const HomePage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── FOOTER ── */}
-      <footer style={footerStyle}>
-        <div style={footerInnerStyle}>
-          <div style={footerColStyle}>
-            <h3 style={footerBrandStyle}>VIRTUAL TRY-ON</h3>
-            <p style={footerTextStyle}>
-              AI-powered virtual try-on experiences designed to help shoppers feel confident before they buy.
-              Discover curated fashion, try outfits instantly, and get personalised style suggestions.
-            </p>
-
-            <div style={footerMetaRowStyle}>
-              <span style={footerMetaPillStyle}>VITON-HD</span>
-              <span style={footerMetaPillStyle}>KNN Recs</span>
-              <span style={footerMetaPillStyle}>FastAPI</span>
-            </div>
-          </div>
-
-          <div style={footerColStyle}>
-            <p style={footerOverlineStyle}>Quick Links</p>
-            <div style={footerLinksColStyle}>
-              <Link to="/" className="viton-footer-link">Home</Link>
-              <Link to="/products" className="viton-footer-link">Products</Link>
-              <Link to="/virtual-tryon" className="viton-footer-link">Virtual Try-On</Link>
-              <Link to="/recommendations" className="viton-footer-link">Recommendations</Link>
-              <Link to="/about" className="viton-footer-link">About</Link>
-            </div>
-          </div>
-
-          <div style={footerColStyle}>
-            <p style={footerOverlineStyle}>Contact</p>
-            <p style={footerTextStyle}>
-              Colombo, Sri Lanka<br />
-              <span style={{ opacity: 0.85 }}>support@virtualtryon.com</span><br />
-              <span style={{ opacity: 0.85 }}>+94 77 123 4567</span>
-            </p>
-
-            <div style={footerNewsletterStyle}>
-              <p style={footerOverlineStyle}>Newsletter</p>
-              <div style={footerFormRowStyle}>
-                <input
-                  type="email"
-                  placeholder="Enter your email"
-                  style={footerInputStyle}
-                />
-                <button type="button" style={footerButtonStyle}>
-                  Subscribe
-                </button>
-              </div>
-              <p style={footerTinyStyle}>
-                Get new arrivals & AI style picks — no spam.
-              </p>
-            </div>
-
-            <div style={footerSocialRowStyle}>
-              <a className="viton-footer-link" href="https://instagram.com" target="_blank" rel="noreferrer" aria-label="Instagram">Instagram</a>
-              <span style={footerDotStyle}>·</span>
-              <a className="viton-footer-link" href="https://tiktok.com" target="_blank" rel="noreferrer" aria-label="TikTok">TikTok</a>
-              <span style={footerDotStyle}>·</span>
-              <a className="viton-footer-link" href="https://youtube.com" target="_blank" rel="noreferrer" aria-label="YouTube">YouTube</a>
-            </div>
-          </div>
-        </div>
-
-        <div style={footerBottomStyle}>
-          <p style={footerTinyStyle}>
-            © {new Date().getFullYear()} Virtual Try-On. All rights reserved.
-          </p>
-          <div style={footerBottomLinksStyle}>
-            <a className="viton-footer-link" href="/privacy">Privacy</a>
-            <span style={footerDotStyle}>·</span>
-            <a className="viton-footer-link" href="/terms">Terms</a>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
@@ -898,156 +810,5 @@ const finalCTAButtonsStyle: React.CSSProperties = {
   flexWrap: 'wrap',
 };
 
-const footerStyle: React.CSSProperties = {
-  background: '#0f0f0f',
-  color: '#fff',
-  borderTop: '1px solid rgba(255,255,255,0.08)',
-  padding: '80px 48px 36px',
-};
-
-const footerInnerStyle: React.CSSProperties = {
-  maxWidth: '1200px',
-  margin: '0 auto',
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-  gap: '48px',
-};
-
-const footerColStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '16px',
-};
-
-const footerBrandStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: '22px',
-  fontWeight: 300,
-  letterSpacing: '6px',
-  textTransform: 'uppercase',
-  margin: 0,
-};
-
-const footerOverlineStyle: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '10px',
-  fontWeight: 500,
-  letterSpacing: '3px',
-  textTransform: 'uppercase',
-  color: 'rgba(201,169,110,0.9)',
-  margin: 0,
-};
-
-const footerTextStyle: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '12px',
-  fontWeight: 300,
-  lineHeight: 1.9,
-  color: 'rgba(255,255,255,0.65)',
-  margin: 0,
-  maxWidth: '420px',
-};
-
-const footerMetaRowStyle: React.CSSProperties = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: '10px',
-  marginTop: '8px',
-};
-
-const footerMetaPillStyle: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '10px',
-  letterSpacing: '2px',
-  textTransform: 'uppercase',
-  padding: '8px 12px',
-  border: '1px solid rgba(255,255,255,0.16)',
-  borderRadius: '999px',
-  color: 'rgba(255,255,255,0.72)',
-};
-
-const footerLinksColStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '12px',
-};
-
-const footerNewsletterStyle: React.CSSProperties = {
-  marginTop: '6px',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '10px',
-};
-
-const footerFormRowStyle: React.CSSProperties = {
-  display: 'flex',
-  gap: '10px',
-  flexWrap: 'wrap',
-};
-
-const footerInputStyle: React.CSSProperties = {
-  flex: 1,
-  minWidth: '200px',
-  padding: '12px 14px',
-  background: 'rgba(255,255,255,0.06)',
-  border: '1px solid rgba(255,255,255,0.14)',
-  color: '#fff',
-  outline: 'none',
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '12px',
-  borderRadius: '6px',
-};
-
-const footerButtonStyle: React.CSSProperties = {
-  padding: '12px 16px',
-  background: '#c9a96e',
-  border: '1px solid rgba(255,255,255,0.12)',
-  color: '#fff',
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '11px',
-  letterSpacing: '2px',
-  textTransform: 'uppercase',
-  cursor: 'pointer',
-  borderRadius: '6px',
-};
-
-const footerSocialRowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '10px',
-  flexWrap: 'wrap',
-  marginTop: '10px',
-};
-
-const footerBottomStyle: React.CSSProperties = {
-  maxWidth: '1200px',
-  margin: '44px auto 0',
-  paddingTop: '22px',
-  borderTop: '1px solid rgba(255,255,255,0.08)',
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  gap: '18px',
-  flexWrap: 'wrap',
-};
-
-const footerBottomLinksStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '10px',
-  flexWrap: 'wrap',
-};
-
-const footerTinyStyle: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '11px',
-  letterSpacing: '1px',
-  color: 'rgba(255,255,255,0.5)',
-  margin: 0,
-};
-
-const footerDotStyle: React.CSSProperties = {
-  color: 'rgba(255,255,255,0.35)',
-};
 
 export default HomePage;

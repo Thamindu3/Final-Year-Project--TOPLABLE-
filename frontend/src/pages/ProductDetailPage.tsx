@@ -34,12 +34,31 @@ interface PersonImage {
 }
 
 const COLOR_SWATCHES: Record<string, string> = {
-  white: '#f0f0f0', black: '#1a1a1a', gray: '#888888', grey: '#888888',
-  blue: '#4a7dc8', navy: '#1a2860', red: '#c83232', green: '#3a8a4a',
-  yellow: '#d4c040', pink: '#e87890', purple: '#8040a0', orange: '#e07830',
-  brown: '#8a5a30', beige: '#c8b49a', cream: '#f5f0e0', khaki: '#b0a060',
-  'blue-white': '#6090d0', 'red-white': '#d04040', 'light blue': '#a0c0e0',
+  // Neutrals
+  white: '#f5f5f5', black: '#1a1a1a', gray: '#888888', grey: '#888888',
+  charcoal: '#36454f', ivory: '#f9f6e7', cream: '#fffdd0', beige: '#d2b48c',
+  // Blues & Navies
+  blue: '#4a7dc8', navy: '#1a2860', cobalt: '#0047ab', sky: '#87ceeb',
+  powder: '#b0e0e6', 'light blue': '#a0c0e0', 'blue-white': '#6090d0',
+  // Greens
+  green: '#3a8a4a', olive: '#6b7a3a', emerald: '#2ecc71', teal: '#008080',
+  mint: '#3eb489', lime: '#6abf3a',
+  // Reds & Pinks
+  red: '#c0392b', ruby: '#9b111e', burgundy: '#800020', 'red-white': '#d04040',
+  pink: '#e87890', blush: '#f4b8c1', rose: '#e8b4b8', coral: '#e8735a',
+  fuchsia: '#cc0066', peach: '#ffcba4',
+  // Yellows & Oranges
+  yellow: '#f4d03f', mustard: '#e3a857', orange: '#e07830',
+  // Browns & Earth
+  brown: '#795548', camel: '#c19a6b', rust: '#b7410e', terracotta: '#c16a4f',
+  // Purples & Lavender
+  purple: '#8040a0', lavender: '#c3a9d4', lilac: '#c8a2c8', sapphire: '#0f52ba',
+  // Misc
+  turquoise: '#40e0d0', khaki: '#b0a060',
 };
+
+const getSwatchColor = (name: string): string =>
+  COLOR_SWATCHES[name.toLowerCase()] || '#b0b0b0';
 
 const API_BASE = 'http://localhost:8000';
 
@@ -459,7 +478,7 @@ const ProductDetailPage: React.FC = () => {
                     }}
                     style={{
                       width: '32px', height: '32px', borderRadius: '50%', padding: 0,
-                      background: COLOR_SWATCHES[c] || '#999',
+                      background: getSwatchColor(c),
                       border: selectedColor === c ? '2.5px solid #c9a96e' : '2.5px solid transparent',
                       outline: selectedColor === c ? '2px solid #c9a96e' : '1px solid #d4cfc8',
                       outlineOffset: selectedColor === c ? '2px' : '0px',
@@ -621,7 +640,7 @@ const ProductDetailPage: React.FC = () => {
                           onClick={() => { setTryOnColor(c); setTryOnResult(''); setTryOnError(''); setTryOnProgress(''); }}
                           style={{
                             width: '28px', height: '28px', borderRadius: '50%', padding: 0, cursor: 'pointer',
-                            background: COLOR_SWATCHES[c] || '#999',
+                            background: getSwatchColor(c),
                             border: tryOnColor === c ? '2.5px solid #c9a96e' : '2.5px solid transparent',
                             outline: tryOnColor === c ? '2px solid #c9a96e' : '1px solid #d4cfc8',
                             outlineOffset: tryOnColor === c ? '2px' : '0px',

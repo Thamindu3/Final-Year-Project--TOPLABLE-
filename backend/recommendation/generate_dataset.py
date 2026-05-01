@@ -87,29 +87,44 @@ styles = np.select(
 )
 
 # ── Step 6: Classify Color Palette ───────────────────────────
-# FIX (Problem 1): 60/40 dominant split gives all 5 palettes
-# enough representation to be learnable — the old 88/12 split
-# made Bold_Brights and Muted_Pastels never get predicted.
+# Deterministic assignment based on Skin_Tone_Code + BMI bands.
+# The previous random 60/40 split created a hard ~58% accuracy
+# ceiling: the model could not learn what was random by design.
 #
-# Cool   -> 60% Jewel_Tones,    40% Muted_Pastels
-# Neutral-> 55% Neutral_Classic, 30% Bold_Brights, 15% Muted_Pastels
-# Warm   -> 60% Earth_Tones,    40% Bold_Brights
-palette_rng = np.random.uniform(0, 1, NUM_ROWS)
+# Cool   (0):  BMI < 23            → Jewel_Tones
+#              BMI ≥ 23            → Muted_Pastels
+# Neutral(1):  BMI < 19.5          → Bold_Brights
+#              BMI 19.5–24.9       → Neutral_Classic
+#              BMI 25.0–28.9       → Earth_Tones
+#              BMI ≥ 29            → Muted_Pastels
+# Warm   (2):  BMI < 22            → Bold_Brights
+#              BMI ≥ 22            → Earth_Tones
+#
+# 5% random label flip simulates real-world individual preference
+# variation while keeping the signal learnable (theoretical ceiling ~96%).
 
-cool_palette = np.where(palette_rng < 0.60, "Jewel_Tones", "Muted_Pastels")
+cool_palette = np.where(bmis < 23.0, "Jewel_Tones", "Muted_Pastels")
 
-neutral_palette = np.where(
-    palette_rng < 0.55, "Neutral_Classic",
-    np.where(palette_rng < 0.85, "Bold_Brights", "Muted_Pastels"),
+neutral_palette = np.select(
+    [bmis < 19.5, bmis < 25.0, bmis < 29.0],
+    ["Bold_Brights", "Neutral_Classic", "Earth_Tones"],
+    default="Muted_Pastels",
 )
 
-warm_palette = np.where(palette_rng < 0.60, "Earth_Tones", "Bold_Brights")
+warm_palette = np.where(bmis < 22.0, "Bold_Brights", "Earth_Tones")
 
 palettes = np.select(
     [skin_codes == 0, skin_codes == 1, skin_codes == 2],
     [cool_palette, neutral_palette, warm_palette],
     default="Neutral_Classic",
 )
+
+# 5% random label flip to simulate individual preference variation
+_noise_mask    = np.random.uniform(0, 1, NUM_ROWS) < 0.05
+_all_palettes  = np.array(["Bold_Brights", "Earth_Tones", "Jewel_Tones",
+                            "Muted_Pastels", "Neutral_Classic"])
+_noise_labels  = np.random.choice(_all_palettes, size=NUM_ROWS)
+palettes       = np.where(_noise_mask, _noise_labels, palettes)
 
 # ── Step 7: Build DataFrame ───────────────────────────────────
 df = pd.DataFrame({

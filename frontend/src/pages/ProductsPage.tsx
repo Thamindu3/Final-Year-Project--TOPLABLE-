@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { productAPI } from '../services/api';
 import Navbar from '../components/Navbar';
@@ -31,20 +31,52 @@ const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 const CATEGORIES = ['tops', 'bottoms', 'dresses', 'outerwear', 'accessories', 'footwear'];
 const API_BASE = 'http://localhost:8000';
 
-// Maps color names to CSS colors for swatches
+// Maps color names to CSS colors for swatches (case-insensitive via getSwatchColor())
 const COLOR_SWATCHES: Record<string, string> = {
-  white: '#f0f0f0', black: '#1a1a1a', gray: '#888888', grey: '#888888',
-  blue: '#4a7dc8', navy: '#1a2860', red: '#c83232', green: '#3a8a4a',
-  yellow: '#d4c040', pink: '#e87890', purple: '#8040a0', orange: '#e07830',
-  brown: '#8a5a30', beige: '#c8b49a', cream: '#f5f0e0', khaki: '#b0a060',
-  'blue-white': '#6090d0', 'red-white': '#d04040', 'light blue': '#a0c0e0',
+  // Neutrals
+  white: '#f5f5f5', black: '#1a1a1a', gray: '#888888', grey: '#888888',
+  charcoal: '#36454f', ivory: '#f9f6e7', cream: '#fffdd0', beige: '#d2b48c',
+  // Blues & Navies
+  blue: '#4a7dc8', navy: '#1a2860', cobalt: '#0047ab', sky: '#87ceeb',
+  powder: '#b0e0e6', 'light blue': '#a0c0e0', 'blue-white': '#6090d0',
+  // Greens
+  green: '#3a8a4a', olive: '#6b7a3a', emerald: '#2ecc71', teal: '#008080',
+  mint: '#3eb489', lime: '#6abf3a',
+  // Reds & Pinks
+  red: '#c0392b', ruby: '#9b111e', burgundy: '#800020', 'red-white': '#d04040',
+  pink: '#e87890', blush: '#f4b8c1', rose: '#e8b4b8', coral: '#e8735a',
+  fuchsia: '#cc0066', peach: '#ffcba4',
+  // Yellows & Oranges
+  yellow: '#f4d03f', mustard: '#e3a857', orange: '#e07830',
+  // Browns & Earth
+  brown: '#795548', camel: '#c19a6b', rust: '#b7410e', terracotta: '#c16a4f',
+  // Purples & Lavender
+  purple: '#8040a0', lavender: '#c3a9d4', lilac: '#c8a2c8', sapphire: '#0f52ba',
+  // Misc
+  turquoise: '#40e0d0', khaki: '#b0a060',
 };
+
+const getSwatchColor = (name: string): string =>
+  COLOR_SWATCHES[name.toLowerCase()] || '#b0b0b0';
 
 const emptyForm = (): Partial<Product> => ({
   name: '', description: '', price: 0, category: 'tops',
   image_url: '', image_gallery: [], sizes: [], colors: [], stock: 0,
   size_stock: {}, color_size_stock: {},
 });
+
+// True when the product has ANY available stock (any color/size combo > 0)
+function hasAnyStock(p: Product): boolean {
+  const css = p.color_size_stock;
+  if (css && Object.keys(css).length > 0) {
+    return Object.values(css).some(entry => Object.values(entry).some(qty => qty > 0));
+  }
+  const ss = p.size_stock;
+  if (ss && Object.keys(ss).length > 0) {
+    return Object.values(ss).some(qty => qty > 0);
+  }
+  return (p.stock ?? 0) > 0;
+}
 
 // Returns stock for a given color+size, falling back gracefully
 function getProductStock(p: Product, color: string, size: string): number {
@@ -86,6 +118,18 @@ const ProductsPage: React.FC = () => {
   const [orderItem, setOrderItem] = useState<CartItem | null>(null);
   const navigate = useNavigate();
 
+  // ── Filter & sort state ──────────────────────────────────────
+  const [filterInStock, setFilterInStock]       = useState(false);
+  const [filterOutOfStock, setFilterOutOfStock] = useState(false);
+  const [priceMin, setPriceMin]                 = useState(0);
+  const [priceMax, setPriceMax]                 = useState(100000);
+  const [maxPriceAll, setMaxPriceAll]           = useState(100000);
+  const [filterSizes, setFilterSizes]           = useState<Set<string>>(new Set());
+  const [filterColors, setFilterColors]         = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy]                     = useState('featured');
+  const [salesData, setSalesData]               = useState<Record<string, number>>({});
+  const [openSections, setOpenSections]         = useState({ availability: true, price: true, size: true, color: true });
+
   // Admin product management
   const [showModal, setShowModal]   = useState(false);
   const [editingId, setEditingId]   = useState<number | null>(null);
@@ -107,13 +151,40 @@ const ProductsPage: React.FC = () => {
     localStorage.setItem('viton_cart', JSON.stringify(cart));
   }, [cart]);
 
-  // Initialise per-card selections whenever products load
+  // Initialise per-card selections to the first color+size that has stock
   useEffect(() => {
+    const bestColors: Record<number, string> = {};
+    const bestSizes: Record<number, string> = {};
+
+    products.forEach(p => {
+      const id = p.product_id ?? p.id ?? 0;
+      const colors = p.colors?.length ? p.colors : [''];
+      const sizes  = p.sizes?.length  ? p.sizes  : [''];
+
+      let foundColor = colors[0];
+      let foundSize  = sizes[0];
+      let found = false;
+
+      outer: for (const c of colors) {
+        for (const s of sizes) {
+          if (getProductStock(p, c, s) > 0) {
+            foundColor = c;
+            foundSize  = s;
+            found = true;
+            break outer;
+          }
+        }
+      }
+      // If no combo has stock, keep first color/size (product is fully OOS)
+      bestColors[id] = foundColor;
+      bestSizes[id]  = foundSize;
+    });
+
     setCardColors(prev => {
       const next = { ...prev };
       products.forEach(p => {
         const id = p.product_id ?? p.id ?? 0;
-        if (!next[id]) next[id] = p.colors?.[0] || '';
+        if (!next[id]) next[id] = bestColors[id] || '';
       });
       return next;
     });
@@ -121,7 +192,7 @@ const ProductsPage: React.FC = () => {
       const next = { ...prev };
       products.forEach(p => {
         const id = p.product_id ?? p.id ?? 0;
-        if (!next[id]) next[id] = p.sizes?.[0] || '';
+        if (!next[id]) next[id] = bestSizes[id] || '';
       });
       return next;
     });
@@ -135,11 +206,27 @@ const ProductsPage: React.FC = () => {
     }
   }, [viewProduct]);
 
+  // Initialise price range bounds from loaded products
+  useEffect(() => {
+    if (products.length > 0) {
+      const max = Math.ceil(Math.max(...products.map(p => p.price)));
+      setMaxPriceAll(max);
+      setPriceMax(max);
+    }
+  }, [products]);
+
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await productAPI.getAll();
-      setProducts(response.data.products || []);
+      const [prodRes, salesRes] = await Promise.all([
+        productAPI.getAll(),
+        fetch(`${API_BASE}/api/products/sales`)
+          .then(r => r.ok ? r.json() : { sales: {} })
+          .catch(() => ({ sales: {} })),
+      ]);
+      setProducts(prodRes.data.products || []);
+      // JSON keys arrive as strings ("7", "2" …) — keep as-is
+      setSalesData(salesRes.sales || {});
       setError(null);
     } catch (err) {
       setError('Failed to load products. Make sure backend is running at http://localhost:8000');
@@ -149,6 +236,53 @@ const ProductsPage: React.FC = () => {
   };
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3500); };
+
+  // All unique colours across all products (for sidebar)
+  const allColors = useMemo(
+    () => Array.from(new Set(products.flatMap(p => p.colors || []))).sort(),
+    [products],
+  );
+
+  // Filtered + sorted products
+  const filteredSorted = useMemo(() => {
+    let result = [...products];
+    if (filterInStock || filterOutOfStock) {
+      result = result.filter(p => {
+        const inStk = hasAnyStock(p);
+        return (filterInStock && inStk) || (filterOutOfStock && !inStk);
+      });
+    }
+    result = result.filter(p => p.price >= priceMin && p.price <= priceMax);
+    if (filterSizes.size > 0) result = result.filter(p => p.sizes?.some(s => filterSizes.has(s)));
+    if (filterColors.size > 0) result = result.filter(p => p.colors?.some(c => filterColors.has(c)));
+    switch (sortBy) {
+      case 'price-low':    return [...result].sort((a, b) => a.price - b.price);
+      case 'price-high':   return [...result].sort((a, b) => b.price - a.price);
+      case 'alpha-az':     return [...result].sort((a, b) => a.name.localeCompare(b.name));
+      case 'alpha-za':     return [...result].sort((a, b) => b.name.localeCompare(a.name));
+      case 'best-selling': return [...result].sort((a, b) => {
+        // JSON keys are strings — use String() to match
+        const aSold = salesData[String(a.product_id ?? a.id)] ?? 0;
+        const bSold = salesData[String(b.product_id ?? b.id)] ?? 0;
+        return bSold - aSold;   // highest sold first
+      });
+      default:             return result;
+    }
+  }, [products, filterInStock, filterOutOfStock, priceMin, priceMax, filterSizes, filterColors, sortBy, salesData]);
+
+  const clearFilters = () => {
+    setFilterInStock(false); setFilterOutOfStock(false);
+    setPriceMin(0); setPriceMax(maxPriceAll);
+    setFilterSizes(new Set()); setFilterColors(new Set());
+  };
+
+  const toggleFilterSize = (s: string) =>
+    setFilterSizes(prev => { const n = new Set(prev); n.has(s) ? n.delete(s) : n.add(s); return n; });
+
+  const toggleFilterColor = (c: string) =>
+    setFilterColors(prev => { const n = new Set(prev); n.has(c) ? n.delete(c) : n.add(c); return n; });
+
+  const isFiltered = filterInStock || filterOutOfStock || filterSizes.size > 0 || filterColors.size > 0 || priceMin > 0 || priceMax < maxPriceAll;
 
   const cartTotal = cart.reduce((sum, i) => sum + i.product.price * i.quantity, 0);
   const cartCount = cart.reduce((sum, i) => sum + i.quantity, 0);
@@ -389,211 +523,297 @@ const ProductsPage: React.FC = () => {
             Product<br /><em>Catalogue</em>
           </h1>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <p style={pageCountStyle}>{products.length} Items</p>
-          <button
-            onClick={() => setShowCart(true)}
-            style={cartIconBtnStyle}
-            title="View Cart"
-          >
-            <svg viewBox="0 0 24 24" fill="none" style={{ width: 20, height: 20 }} stroke="currentColor" strokeWidth={1.8}>
-              <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" strokeLinecap="round" strokeLinejoin="round"/>
-              <line x1="3" y1="6" x2="21" y2="6" strokeLinecap="round"/>
-              <path d="M16 10a4 4 0 0 1-8 0" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            {cartCount > 0 && <span style={cartBadgeStyle}>{cartCount}</span>}
-          </button>
-        </div>
+        <button onClick={() => setShowCart(true)} style={cartIconBtnStyle} title="View Cart">
+          <svg viewBox="0 0 24 24" fill="none" style={{ width: 20, height: 20 }} stroke="currentColor" strokeWidth={1.8}>
+            <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" strokeLinecap="round" strokeLinejoin="round"/>
+            <line x1="3" y1="6" x2="21" y2="6" strokeLinecap="round"/>
+            <path d="M16 10a4 4 0 0 1-8 0" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          {cartCount > 0 && <span style={cartBadgeStyle}>{cartCount}</span>}
+        </button>
       </header>
 
       <div style={dividerStyle} />
-
       {msg && <div style={msgStyle}>{msg}</div>}
 
-      {/* ── PRODUCT GRID ── */}
-      <main style={gridWrapStyle}>
-        {products.length === 0 ? (
-          <div style={emptyStateStyle}>
-            <p style={emptyStateTextStyle}>No products available.</p>
+      {/* ── CONTENT AREA: SIDEBAR + PRODUCTS ── */}
+      <div style={contentAreaStyle}>
+
+        {/* ══ FILTER SIDEBAR ══ */}
+        <aside style={sidebarStyle}>
+
+          {isFiltered && (
+            <button onClick={clearFilters} style={clearFiltersBtnStyle}>
+              Clear all filters ✕
+            </button>
+          )}
+
+          {/* AVAILABILITY */}
+          <div style={filterSectionStyle}>
+            <button style={filterSectionHeaderStyle} onClick={() => setOpenSections(s => ({ ...s, availability: !s.availability }))}>
+              <span>AVAILABILITY</span>
+              <span style={filterChevronStyle}>{openSections.availability ? '∧' : '∨'}</span>
+            </button>
+            {openSections.availability && (
+              <div style={filterSectionBodyStyle}>
+                {([
+                  { label: 'In Stock',     checked: filterInStock,     set: setFilterInStock,     count: products.filter(p => hasAnyStock(p)).length },
+                  { label: 'Out of Stock', checked: filterOutOfStock, set: setFilterOutOfStock, count: products.filter(p => !hasAnyStock(p)).length },
+                ] as const).map(opt => (
+                  <label key={opt.label} style={filterCheckboxLabelStyle}>
+                    <input type="checkbox" checked={opt.checked} onChange={e => (opt.set as any)(e.target.checked)} style={{ accentColor: '#c9a96e', cursor: 'pointer', flexShrink: 0 }} />
+                    <span style={{ flex: 1 }}>{opt.label}</span>
+                    <span style={filterCountStyle}>{opt.count}</span>
+                  </label>
+                ))}
+              </div>
+            )}
           </div>
-        ) : (
-          products.map((product, i) => {
-            const pId = product.product_id || product.id || i;
-            const activeColor = cardColors[pId] || product.colors?.[0] || '';
-            const activeSize  = cardSizes[pId]  || product.sizes?.[0]  || '';
-            const stockQty    = getProductStock(product, activeColor, activeSize);
-            const inStock     = stockQty > 0;
 
-            return (
-              <article
-                key={pId}
-                style={{
-                  ...cardStyle,
-                  animationDelay: `${i * 80}ms`,
-                  position: 'relative',
-                  transform: hoveredId === pId ? 'translateY(-6px)' : 'translateY(0)',
-                  boxShadow: hoveredId === pId ? '0 20px 48px rgba(0,0,0,0.14)' : '0 2px 8px rgba(0,0,0,0.06)',
-                }}
-                className="viton-product-card"
-                onMouseEnter={() => setHoveredId(pId)}
-                onMouseLeave={() => setHoveredId(null)}
-              >
-                {/* Image area */}
-                <div style={cardImageWrapStyle}>
-                  <div
+          {/* PRICE */}
+          <div style={filterSectionStyle}>
+            <button style={filterSectionHeaderStyle} onClick={() => setOpenSections(s => ({ ...s, price: !s.price }))}>
+              <span>PRICE</span>
+              <span style={filterChevronStyle}>{openSections.price ? '∧' : '∨'}</span>
+            </button>
+            {openSections.price && (
+              <div style={{ paddingBottom: '16px' }}>
+                {/* Min / Max value boxes */}
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', margin: '4px 0 14px' }}>
+                  <div style={priceBoxStyle}>
+                    <span style={priceBoxLabelStyle}>MIN</span>
+                    <span style={priceBoxValueStyle}>LKR {priceMin.toLocaleString()}</span>
+                  </div>
+                  <span style={{ color: '#c9a96e', fontSize: '14px', flexShrink: 0 }}>—</span>
+                  <div style={priceBoxStyle}>
+                    <span style={priceBoxLabelStyle}>MAX</span>
+                    <span style={priceBoxValueStyle}>LKR {priceMax.toLocaleString()}</span>
+                  </div>
+                </div>
+
+                {/* Dual-thumb track */}
+                <div className="viton-price-range" style={{ position: 'relative', height: '24px' }}>
+                  {/* Grey full track */}
+                  <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: '4px', background: '#e8e4de', transform: 'translateY(-50%)', borderRadius: '4px' }}>
+                    {/* Gold filled range */}
+                    <div style={{
+                      position: 'absolute',
+                      left:  `${(priceMin  / (maxPriceAll || 1)) * 100}%`,
+                      right: `${100 - (priceMax / (maxPriceAll || 1)) * 100}%`,
+                      height: '100%', background: '#c9a96e', borderRadius: '4px',
+                    }} />
+                  </div>
+                  {/* Min thumb — raised z-index when pushed near the right */}
+                  <input type="range" min={0} max={maxPriceAll}
+                    step={Math.max(1, Math.floor(maxPriceAll / 200))}
+                    value={priceMin}
+                    onChange={e => setPriceMin(Math.min(Number(e.target.value), priceMax - 1))}
+                    style={{ zIndex: priceMin / (maxPriceAll || 1) > 0.9 ? 5 : 3 }}
+                  />
+                  {/* Max thumb */}
+                  <input type="range" min={0} max={maxPriceAll}
+                    step={Math.max(1, Math.floor(maxPriceAll / 200))}
+                    value={priceMax}
+                    onChange={e => setPriceMax(Math.max(Number(e.target.value), priceMin + 1))}
+                    style={{ zIndex: priceMin / (maxPriceAll || 1) > 0.9 ? 3 : 4 }}
+                  />
+                </div>
+
+                {/* Scale boundary labels */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
+                  <span style={priceScaleLabelStyle}>LKR 0</span>
+                  <span style={priceScaleLabelStyle}>LKR {maxPriceAll.toLocaleString()}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* SIZE */}
+          <div style={filterSectionStyle}>
+            <button style={filterSectionHeaderStyle} onClick={() => setOpenSections(s => ({ ...s, size: !s.size }))}>
+              <span>SIZE</span>
+              <span style={filterChevronStyle}>{openSections.size ? '∧' : '∨'}</span>
+            </button>
+            {openSections.size && (
+              <div style={filterSectionBodyStyle}>
+                {SIZES.map(sz => {
+                  const count = products.filter(p => p.sizes?.includes(sz)).length;
+                  if (count === 0) return null;
+                  return (
+                    <label key={sz} style={filterCheckboxLabelStyle}>
+                      <input type="checkbox" checked={filterSizes.has(sz)} onChange={() => toggleFilterSize(sz)} style={{ accentColor: '#c9a96e', cursor: 'pointer', flexShrink: 0 }} />
+                      <span style={{ flex: 1 }}>{sz}</span>
+                      <span style={filterCountStyle}>{count}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* COLOR */}
+          <div style={filterSectionStyle}>
+            <button style={filterSectionHeaderStyle} onClick={() => setOpenSections(s => ({ ...s, color: !s.color }))}>
+              <span>COLOR</span>
+              <span style={filterChevronStyle}>{openSections.color ? '∧' : '∨'}</span>
+            </button>
+            {openSections.color && (
+              <div style={filterSectionBodyStyle}>
+                {allColors.map(c => {
+                  const count = products.filter(p => p.colors?.includes(c)).length;
+                  return (
+                    <label key={c} style={filterCheckboxLabelStyle}>
+                      <input type="checkbox" checked={filterColors.has(c)} onChange={() => toggleFilterColor(c)} style={{ accentColor: '#c9a96e', cursor: 'pointer', flexShrink: 0 }} />
+                      <span style={{ display: 'inline-block', width: '13px', height: '13px', borderRadius: '50%', background: getSwatchColor(c), border: '1px solid #d4cfc8', flexShrink: 0 }} />
+                      <span style={{ flex: 1, textTransform: 'capitalize' }}>{c}</span>
+                      <span style={filterCountStyle}>{count}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </aside>
+
+        {/* ══ MAIN CONTENT: TOOLBAR + GRID ══ */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+
+          {/* Toolbar */}
+          <div style={toolbarStyle}>
+            <p style={toolbarCountStyle}>{filteredSorted.length} product{filteredSorted.length !== 1 ? 's' : ''}</p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={toolbarSortLabelStyle}>Sort by</span>
+              <select value={sortBy} onChange={e => setSortBy(e.target.value)} style={sortSelectStyle}>
+                <option value="featured">Featured</option>
+                <option value="best-selling">Best Selling</option>
+                <option value="alpha-az">Alphabetically, A–Z</option>
+                <option value="alpha-za">Alphabetically, Z–A</option>
+                <option value="price-low">Price, low to high</option>
+                <option value="price-high">Price, high to low</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Product grid */}
+          <main style={gridStyle}>
+            {filteredSorted.length === 0 ? (
+              <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '80px 40px' }}>
+                <p style={emptyStateTextStyle}>No products match your filters.</p>
+                <button onClick={clearFilters} style={{ marginTop: '20px', padding: '10px 28px', background: 'transparent', border: '1px solid #1a1a1a', fontFamily: "'Montserrat',sans-serif", fontSize: '9px', letterSpacing: '2px', textTransform: 'uppercase' as const, cursor: 'pointer' }}>
+                  Clear Filters
+                </button>
+              </div>
+            ) : (
+              filteredSorted.map((product, i) => {
+                const pId = product.product_id || product.id || i;
+                const activeColor = cardColors[pId] || product.colors?.[0] || '';
+                const activeSize  = cardSizes[pId]  || product.sizes?.[0]  || '';
+                const stockQty    = getProductStock(product, activeColor, activeSize);
+                const inStock     = stockQty > 0;
+
+                return (
+                  <article
+                    key={pId}
                     style={{
-                      ...cardImageStyle,
-                      background: `linear-gradient(135deg, ${getCategoryColor(product.category)} 0%, #e8ddd0 100%)`,
+                      ...cardStyle,
+                      animationDelay: `${i * 80}ms`,
                       position: 'relative',
+                      transform: hoveredId === pId ? 'translateY(-6px)' : 'translateY(0)',
+                      boxShadow: hoveredId === pId ? '0 20px 48px rgba(0,0,0,0.14)' : '0 2px 8px rgba(0,0,0,0.06)',
                     }}
+                    className="viton-product-card"
+                    onMouseEnter={() => setHoveredId(pId)}
+                    onMouseLeave={() => setHoveredId(null)}
                   >
-                    {product.image_url && !imgErrors.has(pId as number) ? (
-                      <img
-                        src={product.image_url}
-                        alt={product.name}
-                        onError={() => setImgErrors(prev => { const n = new Set(Array.from(prev)); n.add(pId as number); return n; })}
-                        style={{
-                          position: 'absolute', inset: 0, width: '100%', height: '100%',
-                          objectFit: 'cover', transition: 'transform 0.5s ease',
-                          transform: hoveredId === pId ? 'scale(1.07)' : 'scale(1)',
-                        }}
-                      />
-                    ) : (
-                      <span style={cardInitialStyle}>{product.name.charAt(0)}</span>
-                    )}
-                  </div>
-
-                  <div style={{ ...cardOverlayStyle, opacity: hoveredId === pId ? 1 : 0 }}>
-                    <button style={quickViewBtnStyle} onClick={() => setViewProduct(product)}>Quick View</button>
-                  </div>
-
-                  <span style={categoryBadgeStyle}>{product.category}</span>
-                </div>
-
-                {/* Card content */}
-                <div style={cardBodyStyle}>
-                  <div style={cardTopRowStyle}>
-                    <h3 style={cardNameStyle}>{product.name}</h3>
-                    <p style={cardPriceStyle}>LKR {product.price.toFixed(0)}</p>
-                  </div>
-                  <p style={cardDescStyle}>{product.description}</p>
-
-                  {/* ── Color swatches ── */}
-                  {product.colors && product.colors.length > 0 && (
-                    <div style={{ marginBottom: '10px' }}>
-                      <p style={cardSectionLabelStyle}>Color</p>
-                      <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
-                        {product.colors.map(color => (
-                          <button
-                            key={color}
-                            title={color}
-                            onClick={e => {
-                              e.stopPropagation();
-                              setCardColors(prev => ({ ...prev, [pId]: color }));
-                            }}
-                            style={{
-                              width: '22px', height: '22px', borderRadius: '50%', padding: 0,
-                              background: COLOR_SWATCHES[color] || '#999',
-                              border: activeColor === color ? '2px solid #c9a96e' : '2px solid #e8e4de',
-                              boxShadow: activeColor === color ? '0 0 0 2px #c9a96e' : 'none',
-                              cursor: 'pointer', transition: 'all 0.2s',
-                              outline: 'none',
-                            }}
+                    {/* Image area */}
+                    <div style={cardImageWrapStyle}>
+                      <div style={{ ...cardImageStyle, background: `linear-gradient(135deg, ${getCategoryColor(product.category)} 0%, #e8ddd0 100%)`, position: 'relative' }}>
+                        {product.image_url && !imgErrors.has(pId as number) ? (
+                          <img
+                            src={product.image_url}
+                            alt={product.name}
+                            onError={() => setImgErrors(prev => { const n = new Set(Array.from(prev)); n.add(pId as number); return n; })}
+                            style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover', transition: 'transform 0.5s ease', transform: hoveredId === pId ? 'scale(1.07)' : 'scale(1)' }}
                           />
-                        ))}
+                        ) : (
+                          <span style={cardInitialStyle}>{product.name.charAt(0)}</span>
+                        )}
+                      </div>
+                      <div style={{ ...cardOverlayStyle, opacity: hoveredId === pId ? 1 : 0 }}>
+                        <button style={quickViewBtnStyle} onClick={() => setViewProduct(product)}>Quick View</button>
+                      </div>
+                      <span style={categoryBadgeStyle}>{product.category}</span>
+                    </div>
+
+                    {/* Card content */}
+                    <div style={cardBodyStyle}>
+                      <div style={cardTopRowStyle}>
+                        <h3 style={cardNameStyle}>{product.name}</h3>
+                        <p style={cardPriceStyle}>LKR {product.price.toFixed(0)}</p>
+                      </div>
+                      <p style={cardDescStyle}>{product.description}</p>
+
+                      {product.colors && product.colors.length > 0 && (
+                        <div style={{ marginBottom: '10px' }}>
+                          <p style={cardSectionLabelStyle}>Color</p>
+                          <div style={{ display: 'flex', gap: '7px', flexWrap: 'wrap' }}>
+                            {product.colors.map(color => (
+                              <button key={color} title={color}
+                                onClick={e => { e.stopPropagation(); setCardColors(prev => ({ ...prev, [pId]: color })); }}
+                                style={{ width: '22px', height: '22px', borderRadius: '50%', padding: 0, background: getSwatchColor(color), border: activeColor === color ? '2px solid #c9a96e' : '2px solid #e8e4de', boxShadow: activeColor === color ? '0 0 0 2px #c9a96e' : 'none', cursor: 'pointer', transition: 'all 0.2s', outline: 'none' }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {product.sizes && product.sizes.length > 0 && (
+                        <div style={{ marginBottom: '10px' }}>
+                          <p style={cardSectionLabelStyle}>Size</p>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                            {product.sizes.map(size => (
+                              <button key={size}
+                                onClick={e => { e.stopPropagation(); setCardSizes(prev => ({ ...prev, [pId]: size })); }}
+                                style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '9px', fontWeight: 500, letterSpacing: '1.5px', padding: '5px 10px', cursor: 'pointer', transition: 'all 0.2s', background: activeSize === size ? '#1a1a1a' : 'transparent', color: activeSize === size ? '#fff' : '#6b6560', border: `1px solid ${activeSize === size ? '#1a1a1a' : '#d4cfc8'}` }}
+                              >
+                                {size}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      <p style={{ fontFamily: "'Montserrat', sans-serif", fontSize: '10px', fontWeight: 500, color: inStock ? '#4caf50' : '#e53935', marginBottom: '14px' }}>
+                        {inStock ? `${stockQty} in stock` : 'Out of stock'}
+                      </p>
+
+                      <div style={cardFooterStyle}>
+                        <button
+                          style={{ ...addBtnStyle, background: inStock ? 'transparent' : '#e8e4de', color: inStock ? '#1a1a1a' : '#9a9590', borderColor: inStock ? '#1a1a1a' : '#d4cfc8', cursor: inStock ? 'pointer' : 'not-allowed' }}
+                          disabled={!inStock}
+                          onClick={e => { e.stopPropagation(); handleAddToCart(product, activeSize, activeColor); }}
+                          onMouseEnter={e => { if (inStock) { e.currentTarget.style.background = '#c9a96e'; e.currentTarget.style.borderColor = '#c9a96e'; e.currentTarget.style.color = '#fff'; } }}
+                          onMouseLeave={e => { if (inStock) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = '#1a1a1a'; e.currentTarget.style.color = '#1a1a1a'; } }}
+                        >
+                          Add to Cart
+                        </button>
+                        <button
+                          style={viewDetailsBtnStyle}
+                          onClick={() => navigate(`/products/${product.product_id ?? product.id}`)}
+                          onMouseEnter={e => { e.currentTarget.style.background = '#1a1a1a'; e.currentTarget.style.color = '#fff'; }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#6b6560'; }}
+                        >
+                          Details
+                        </button>
                       </div>
                     </div>
-                  )}
-
-                  {/* ── Size selector buttons ── */}
-                  {product.sizes && product.sizes.length > 0 && (
-                    <div style={{ marginBottom: '10px' }}>
-                      <p style={cardSectionLabelStyle}>Size</p>
-                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                        {product.sizes.map(size => (
-                          <button
-                            key={size}
-                            onClick={e => {
-                              e.stopPropagation();
-                              setCardSizes(prev => ({ ...prev, [pId]: size }));
-                            }}
-                            style={{
-                              fontFamily: "'Montserrat', sans-serif",
-                              fontSize: '9px', fontWeight: 500, letterSpacing: '1.5px',
-                              padding: '5px 10px', cursor: 'pointer', transition: 'all 0.2s',
-                              background: activeSize === size ? '#1a1a1a' : 'transparent',
-                              color: activeSize === size ? '#fff' : '#6b6560',
-                              border: `1px solid ${activeSize === size ? '#1a1a1a' : '#d4cfc8'}`,
-                            }}
-                          >
-                            {size}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* ── Stock indicator ── */}
-                  <p style={{
-                    fontFamily: "'Montserrat', sans-serif", fontSize: '10px', fontWeight: 500,
-                    color: inStock ? '#4caf50' : '#e53935', marginBottom: '14px',
-                  }}>
-                    {inStock ? `${stockQty} in stock` : 'Out of stock'}
-                  </p>
-
-                  {/* ── Action row ── */}
-                  <div style={cardFooterStyle}>
-                    <button
-                      style={{
-                        ...addBtnStyle,
-                        background: inStock ? 'transparent' : '#e8e4de',
-                        color: inStock ? '#1a1a1a' : '#9a9590',
-                        borderColor: inStock ? '#1a1a1a' : '#d4cfc8',
-                        cursor: inStock ? 'pointer' : 'not-allowed',
-                      }}
-                      disabled={!inStock}
-                      onClick={e => {
-                        e.stopPropagation();
-                        handleAddToCart(product, activeSize, activeColor);
-                      }}
-                      onMouseEnter={e => {
-                        if (inStock) {
-                          e.currentTarget.style.background = '#c9a96e';
-                          e.currentTarget.style.borderColor = '#c9a96e';
-                          e.currentTarget.style.color = '#fff';
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        if (inStock) {
-                          e.currentTarget.style.background = 'transparent';
-                          e.currentTarget.style.borderColor = '#1a1a1a';
-                          e.currentTarget.style.color = '#1a1a1a';
-                        }
-                      }}
-                    >
-                      Add to Cart
-                    </button>
-                    <button
-                      style={viewDetailsBtnStyle}
-                      onClick={() => navigate(`/products/${product.product_id ?? product.id}`)}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.background = '#1a1a1a';
-                        e.currentTarget.style.color = '#fff';
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.background = 'transparent';
-                        e.currentTarget.style.color = '#6b6560';
-                      }}
-                    >
-                      Details
-                    </button>
-                  </div>
-                </div>
-              </article>
-            );
-          })
-        )}
-      </main>
+                  </article>
+                );
+              })
+            )}
+          </main>
+        </div>
+      </div>
 
       {/* ── ADMIN: PRODUCT MANAGEMENT TABLE ── */}
       {isAdmin && (
@@ -648,7 +868,7 @@ const ProductsPage: React.FC = () => {
                                 title={c}
                                 style={{
                                   display: 'inline-block', width: '16px', height: '16px',
-                                  borderRadius: '50%', background: COLOR_SWATCHES[c] || '#999',
+                                  borderRadius: '50%', background: getSwatchColor(c),
                                   border: '1px solid #d4cfc8',
                                 }}
                               />
@@ -747,7 +967,7 @@ const ProductsPage: React.FC = () => {
                           onClick={() => setSelectedColor(c)}
                           style={{
                             width: '26px', height: '26px', borderRadius: '50%', padding: 0,
-                            background: COLOR_SWATCHES[c] || '#999',
+                            background: getSwatchColor(c),
                             border: selectedColor === c ? '2px solid #c9a96e' : '2px solid #e8e4de',
                             boxShadow: selectedColor === c ? '0 0 0 2px #c9a96e' : 'none',
                             cursor: 'pointer', transition: 'all 0.2s', outline: 'none',
@@ -1069,7 +1289,7 @@ const ProductsPage: React.FC = () => {
                               <td style={{ padding: '6px 10px', fontSize: '10px', color: '#1a1a1a', display: 'flex', alignItems: 'center', gap: '7px', whiteSpace: 'nowrap' }}>
                                 <span style={{
                                   display: 'inline-block', width: '14px', height: '14px', borderRadius: '50%',
-                                  background: COLOR_SWATCHES[color] || '#999', border: '1px solid #d4cfc8', flexShrink: 0,
+                                  background: getSwatchColor(color), border: '1px solid #d4cfc8', flexShrink: 0,
                                 }} />
                                 {color}
                               </td>
@@ -1277,6 +1497,35 @@ const fonts = `
 const dynamicCSS = `
   .viton-product-card { animation: fadeSlideUp 0.6s both; }
   @keyframes fadeSlideUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+
+  /* Dual-thumb price range slider */
+  .viton-price-range input[type=range] {
+    -webkit-appearance: none; appearance: none;
+    position: absolute; width: 100%; height: 100%;
+    background: transparent; pointer-events: none;
+    outline: none; margin: 0; padding: 0;
+  }
+  .viton-price-range input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #c9a96e; cursor: grab; cursor: ew-resize;
+    pointer-events: all;
+    border: 3px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.28);
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .viton-price-range input[type=range]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+    box-shadow: 0 3px 10px rgba(201,169,110,0.5);
+  }
+  .viton-price-range input[type=range]::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: #c9a96e; cursor: ew-resize;
+    pointer-events: all; border: 3px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.28);
+  }
+  .viton-price-range input[type=range]::-webkit-slider-runnable-track { background: transparent; height: 4px; }
+  .viton-price-range input[type=range]::-moz-range-track { background: transparent; height: 4px; }
 `;
 
 const wrapperStyle: React.CSSProperties = { fontFamily: "'Montserrat', sans-serif", background: '#fff', color: '#1a1a1a', minHeight: '100vh' };
@@ -1354,6 +1603,33 @@ const cancelBtnStyle: React.CSSProperties = { padding: '12px 32px', background: 
 const uploadBtnStyle: React.CSSProperties = { display: 'block', width: '100%', padding: '12px', background: '#f5f3ef', border: '2px dashed #c9a96e', color: '#c9a96e', fontFamily: "'Montserrat', sans-serif", fontSize: '10px', fontWeight: 500, letterSpacing: '2px', textTransform: 'uppercase', cursor: 'pointer', textAlign: 'center', marginBottom: '4px', transition: 'background 0.2s' };
 
 const cartIconBtnStyle: React.CSSProperties = { position: 'relative', background: 'none', border: '1px solid #1a1a1a', color: '#1a1a1a', padding: '8px 12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', transition: 'all 0.25s' };
+
+/* ── Sidebar + content area ── */
+const contentAreaStyle: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: '0', padding: '0 0 80px' };
+const sidebarStyle: React.CSSProperties = { width: '220px', flexShrink: 0, padding: '28px 24px', borderRight: '1px solid #e8e4de', position: 'sticky', top: '80px', maxHeight: 'calc(100vh - 80px)', overflowY: 'auto' };
+
+/* Sidebar filter sections */
+const filterSectionStyle: React.CSSProperties = { borderBottom: '1px solid #e8e4de', paddingBottom: '0' };
+const filterSectionHeaderStyle: React.CSSProperties = { width: '100%', background: 'none', border: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', fontFamily: "'Montserrat',sans-serif", fontSize: '10px', fontWeight: 500, letterSpacing: '2.5px', color: '#1a1a1a', cursor: 'pointer', textAlign: 'left' as const };
+const filterChevronStyle: React.CSSProperties = { fontSize: '10px', color: '#9a9590' };
+const filterSectionBodyStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column' as const, gap: '10px', paddingBottom: '16px' };
+const filterCheckboxLabelStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '8px', fontFamily: "'Montserrat',sans-serif", fontSize: '11px', fontWeight: 300, color: '#1a1a1a', cursor: 'pointer' };
+const filterCountStyle: React.CSSProperties = { fontFamily: "'Montserrat',sans-serif", fontSize: '10px', color: '#9a9590', marginLeft: 'auto', flexShrink: 0 };
+const filterPriceTextStyle: React.CSSProperties = { fontFamily: "'Montserrat',sans-serif", fontSize: '10px', color: '#6b6560', letterSpacing: '0.5px' };
+const priceBoxStyle: React.CSSProperties = { flex: 1, border: '1px solid #e8e4de', padding: '7px 10px', background: '#fafaf8', display: 'flex', flexDirection: 'column', gap: '2px' };
+const priceBoxLabelStyle: React.CSSProperties = { fontFamily: "'Montserrat',sans-serif", fontSize: '8px', letterSpacing: '1.5px', textTransform: 'uppercase' as const, color: '#9a9590' };
+const priceBoxValueStyle: React.CSSProperties = { fontFamily: "'Montserrat',sans-serif", fontSize: '11px', fontWeight: 500, color: '#1a1a1a' };
+const priceScaleLabelStyle: React.CSSProperties = { fontFamily: "'Montserrat',sans-serif", fontSize: '9px', color: '#9a9590', letterSpacing: '0.5px' };
+const clearFiltersBtnStyle: React.CSSProperties = { width: '100%', padding: '8px 12px', marginBottom: '16px', background: 'transparent', border: '1px solid #c9a96e', color: '#c9a96e', fontFamily: "'Montserrat',sans-serif", fontSize: '9px', letterSpacing: '1.5px', textTransform: 'uppercase' as const, cursor: 'pointer', transition: 'all 0.2s' };
+
+/* Toolbar (count + sort) */
+const toolbarStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 32px', borderBottom: '1px solid #e8e4de', background: '#fafaf8' };
+const toolbarCountStyle: React.CSSProperties = { fontFamily: "'Montserrat',sans-serif", fontSize: '11px', fontWeight: 400, letterSpacing: '1.5px', color: '#6b6560' };
+const toolbarSortLabelStyle: React.CSSProperties = { fontFamily: "'Montserrat',sans-serif", fontSize: '10px', letterSpacing: '1.5px', color: '#9a9590' };
+const sortSelectStyle: React.CSSProperties = { padding: '8px 32px 8px 12px', border: '1px solid #d4cfc8', fontFamily: "'Montserrat',sans-serif", fontSize: '11px', color: '#1a1a1a', background: '#fff', outline: 'none', cursor: 'pointer', appearance: 'auto' as any };
+
+/* New product grid inside content area */
+const gridStyle: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '24px', padding: '28px 32px' };
 const cartBadgeStyle: React.CSSProperties = { position: 'absolute', top: '-8px', right: '-8px', background: '#c9a96e', color: '#fff', borderRadius: '999px', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Montserrat',sans-serif", fontSize: '9px', fontWeight: 700 };
 
 const orderNowBtnStyle: React.CSSProperties = { padding: '14px 28px', background: '#1a1a1a', border: 'none', color: '#fff', fontFamily: "'Montserrat',sans-serif", fontSize: '10px', fontWeight: 500, letterSpacing: '2px', textTransform: 'uppercase', cursor: 'pointer', transition: 'background 0.25s', flex: 1 };

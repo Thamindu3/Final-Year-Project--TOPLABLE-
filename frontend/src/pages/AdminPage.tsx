@@ -27,10 +27,50 @@ interface Product {
   color_images?: Record<string, string>;
 }
 
+interface OrderItem {
+  product_id: number;
+  name: string;
+  price: number;
+  quantity: number;
+  size: string;
+  color: string;
+  image_url: string;
+  category: string;
+}
+
+interface OrderAddress {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  postalCode: string;
+  shippingMethod: string;
+  paymentMethod: string;
+}
+
+interface Order {
+  order_id: number;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  user_mobile: string;
+  items: OrderItem[];
+  subtotal: number;
+  shipping: number;
+  discount: number;
+  total: number;
+  status: string;
+  address: OrderAddress;
+  created_at: string;
+}
+
 interface Stats {
   total_users: number;
   total_tryons: number;
   total_products: number;
+  total_orders: number;
 }
 
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
@@ -44,10 +84,12 @@ const emptyForm = (): Partial<Product> => ({
 const AdminPage: React.FC = () => {
   const [users, setUsers]         = useState<User[]>([]);
   const [products, setProducts]   = useState<Product[]>([]);
+  const [orders, setOrders]       = useState<Order[]>([]);
   const [stats, setStats]         = useState<Stats | null>(null);
   const [loading, setLoading]     = useState(true);
   const [msg, setMsg]             = useState('');
-  const [activeTab, setActiveTab] = useState<'users' | 'products'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'products' | 'orders'>('users');
+  const [expandedOrder, setExpandedOrder] = useState<number | null>(null);
 
   // Product modal state
   const [showModal, setShowModal]       = useState(false);
@@ -68,14 +110,16 @@ const AdminPage: React.FC = () => {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [usersRes, statsRes, prodsRes] = await Promise.all([
+      const [usersRes, statsRes, prodsRes, ordersRes] = await Promise.all([
         fetch(`${API}/api/admin/users`),
         fetch(`${API}/api/admin/stats`),
         fetch(`${API}/api/products`),
+        fetch(`${API}/api/admin/orders`),
       ]);
       setUsers((await usersRes.json()).users || []);
       setStats(await statsRes.json());
       setProducts((await prodsRes.json()).products || []);
+      setOrders((await ordersRes.json()).orders || []);
     } catch {
       setMsg('Failed to load data. Make sure backend is running.');
     } finally {
@@ -209,6 +253,7 @@ const AdminPage: React.FC = () => {
               <div style={statsGridStyle}>
                 {[
                   { label: 'Total Users',     value: stats.total_users    },
+                  { label: 'Orders Placed',   value: stats.total_orders ?? orders.length },
                   { label: 'Try-On Results',  value: stats.total_tryons   },
                   { label: 'Products',        value: products.length      },
                 ].map((s, i) => (
@@ -222,10 +267,14 @@ const AdminPage: React.FC = () => {
 
             {/* ── Tab bar ── */}
             <div style={tabBarStyle}>
-              {(['users', 'products'] as const).map(t => (
-                <button key={t} onClick={() => setActiveTab(t)}
-                  style={{ ...tabBtnStyle, ...(activeTab === t ? tabActivStyle : {}) }}>
-                  {t === 'users' ? 'User Management' : 'Product Management'}
+              {([
+                { key: 'users',    label: 'User Management'    },
+                { key: 'products', label: 'Product Management' },
+                { key: 'orders',   label: 'Order Management'   },
+              ] as const).map(t => (
+                <button key={t.key} onClick={() => setActiveTab(t.key)}
+                  style={{ ...tabBtnStyle, ...(activeTab === t.key ? tabActivStyle : {}) }}>
+                  {t.label}
                 </button>
               ))}
             </div>
@@ -330,6 +379,172 @@ const AdminPage: React.FC = () => {
                                 </div>
                               </td>
                             </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            )}
+
+            {/* ══ ORDERS TAB ══ */}
+            {activeTab === 'orders' && (
+              <section style={sectionStyle}>
+                <div style={sectionHeaderStyle}>
+                  <p style={overlineStyle}>All Transactions</p>
+                  <h2 style={sectionTitleStyle}>Order<br /><em>Management</em></h2>
+                </div>
+                <p style={{ fontFamily:"'Montserrat',sans-serif", fontSize:'12px', color:'#9a9590', marginBottom:'28px', marginTop:'8px' }}>
+                  {orders.length} order{orders.length !== 1 ? 's' : ''} total — click a row to expand details
+                </p>
+                {orders.length === 0 ? (
+                  <p style={emptyStyle}>No orders placed yet.</p>
+                ) : (
+                  <div style={tableWrapStyle}>
+                    <table style={tableStyle}>
+                      <thead>
+                        <tr>
+                          {['Order ID','Date','Customer','Phone','City','Items','Total (LKR)','Payment','Status',''].map(h =>
+                            <th key={h} style={thStyle}>{h}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {orders.map((o, i) => {
+                          const addr = o.address || {} as OrderAddress;
+                          const customerName = addr.firstName
+                            ? `${addr.firstName} ${addr.lastName}`.trim()
+                            : o.user_name || '—';
+                          const phone    = addr.phone    || o.user_mobile || '—';
+                          const city     = addr.city     || '—';
+                          const payment  = addr.paymentMethod || '—';
+                          const isOpen   = expandedOrder === o.order_id;
+                          return (
+                            <React.Fragment key={o.order_id}>
+                              <tr
+                                style={{ background: i % 2 === 0 ? '#fafaf8' : '#fff', cursor:'pointer' }}
+                                onClick={() => setExpandedOrder(isOpen ? null : o.order_id)}>
+                                <td style={tdStyle}>#{o.order_id}</td>
+                                <td style={tdStyle}>{o.created_at?.split('T')[0]}</td>
+                                <td style={tdStyle}>
+                                  <div style={{ fontWeight:400 }}>{customerName}</div>
+                                  <div style={{ fontSize:'10px', color:'#9a9590', marginTop:'2px' }}>{o.user_email || addr.email || '—'}</div>
+                                </td>
+                                <td style={tdStyle}>{phone}</td>
+                                <td style={tdStyle}>{city}</td>
+                                <td style={tdStyle}>{o.items.length}</td>
+                                <td style={{ ...tdStyle, fontFamily:"'Cormorant Garamond',serif", fontSize:'16px', color:'#c9a96e' }}>
+                                  {Number(o.total).toFixed(2)}
+                                </td>
+                                <td style={tdStyle}>
+                                  <span style={paymentPillStyle(payment)}>{payment}</span>
+                                </td>
+                                <td style={tdStyle}>
+                                  <span style={statusPillStyle(o.status)}>{o.status}</span>
+                                </td>
+                                <td style={tdStyle}>
+                                  <span style={{ fontFamily:"'Montserrat',sans-serif", fontSize:'10px', color:'#c9a96e' }}>
+                                    {isOpen ? '▲' : '▼'}
+                                  </span>
+                                </td>
+                              </tr>
+
+                              {/* ── Expanded order detail ── */}
+                              {isOpen && (
+                                <tr style={{ background:'#fdf9f3' }}>
+                                  <td colSpan={10} style={{ padding:'0', borderBottom:'1px solid #e8e4de' }}>
+                                    <div style={orderDetailStyle}>
+
+                                      {/* Left: items list */}
+                                      <div style={{ flex: 2 }}>
+                                        <p style={detailHeadStyle}>Items Ordered</p>
+                                        <table style={{ width:'100%', borderCollapse:'collapse', fontFamily:"'Montserrat',sans-serif" }}>
+                                          <thead>
+                                            <tr>
+                                              {['Image','Product','Size','Color','Qty','Unit Price','Line Total'].map(h =>
+                                                <th key={h} style={{ ...thStyle, background:'#f2ede7', fontSize:'8px' }}>{h}</th>)}
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {o.items.map((item, idx) => (
+                                              <tr key={idx} style={{ background: idx % 2 === 0 ? '#fdf9f3' : '#fff' }}>
+                                                <td style={{ ...tdStyle, width:'64px', padding:'10px 12px' }}>
+                                                  {item.image_url ? (
+                                                    <img
+                                                      src={item.image_url}
+                                                      alt={item.name}
+                                                      style={{ width:'52px', height:'52px', objectFit:'cover', border:'1px solid #e8e4de', display:'block' }}
+                                                      onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                                    />
+                                                  ) : (
+                                                    <div style={{ width:'52px', height:'52px', background:'#f0ece6', border:'1px solid #e8e4de', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                                                      <span style={{ fontSize:'18px' }}>👕</span>
+                                                    </div>
+                                                  )}
+                                                </td>
+                                                <td style={{ ...tdStyle, fontSize:'11px' }}>
+                                                  <div style={{ fontWeight:400 }}>{item.name}</div>
+                                                  <div style={{ fontSize:'9px', color:'#9a9590', marginTop:'2px', textTransform:'uppercase', letterSpacing:'1px' }}>{item.category}</div>
+                                                </td>
+                                                <td style={{ ...tdStyle, fontSize:'11px' }}>{item.size || '—'}</td>
+                                                <td style={{ ...tdStyle, fontSize:'11px' }}>{item.color || '—'}</td>
+                                                <td style={{ ...tdStyle, fontSize:'11px' }}>{item.quantity}</td>
+                                                <td style={{ ...tdStyle, fontSize:'11px' }}>LKR {Number(item.price).toFixed(2)}</td>
+                                                <td style={{ ...tdStyle, color:'#c9a96e', fontFamily:"'Cormorant Garamond',serif", fontSize:'14px' }}>
+                                                  LKR {(item.price * item.quantity).toFixed(2)}
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+
+                                      {/* Right: address + totals */}
+                                      <div style={{ flex: 1, display:'flex', flexDirection:'column', gap:'20px' }}>
+                                        <div>
+                                          <p style={detailHeadStyle}>Shipping Address</p>
+                                          <div style={detailBoxStyle}>
+                                            <p style={detailLineStyle}><strong>{customerName}</strong></p>
+                                            <p style={detailLineStyle}>{addr.address || '—'}</p>
+                                            <p style={detailLineStyle}>{[addr.city, addr.postalCode].filter(Boolean).join(', ')}</p>
+                                            <p style={detailLineStyle}>{phone}</p>
+                                            <p style={detailLineStyle}>{addr.email || o.user_email || '—'}</p>
+                                          </div>
+                                        </div>
+
+                                        <div>
+                                          <p style={detailHeadStyle}>Delivery &amp; Payment</p>
+                                          <div style={detailBoxStyle}>
+                                            <p style={detailLineStyle}>Shipping: <strong>{addr.shippingMethod || '—'}</strong></p>
+                                            <p style={detailLineStyle}>Payment: <strong>{payment}</strong></p>
+                                          </div>
+                                        </div>
+
+                                        <div>
+                                          <p style={detailHeadStyle}>Order Totals</p>
+                                          <div style={detailBoxStyle}>
+                                            <div style={totalRowStyle}><span>Subtotal</span><span>LKR {Number(o.subtotal).toFixed(2)}</span></div>
+                                            <div style={totalRowStyle}><span>Shipping</span><span>LKR {Number(o.shipping).toFixed(2)}</span></div>
+                                            {o.discount > 0 && (
+                                              <div style={{ ...totalRowStyle, color:'#4caf50' }}>
+                                                <span>Discount</span><span>− LKR {Number(o.discount).toFixed(2)}</span>
+                                              </div>
+                                            )}
+                                            <div style={{ ...totalRowStyle, borderTop:'1px solid #e8e4de', paddingTop:'8px', marginTop:'4px', fontWeight:500 }}>
+                                              <span>Total</span>
+                                              <span style={{ fontFamily:"'Cormorant Garamond',serif", fontSize:'18px', color:'#c9a96e' }}>
+                                                LKR {Number(o.total).toFixed(2)}
+                                              </span>
+                                            </div>
+                                          </div>
+                                        </div>
+                                      </div>
+
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </React.Fragment>
                           );
                         })}
                       </tbody>
@@ -587,5 +802,22 @@ const imgPreviewStyle: React.CSSProperties = { width:'100%', height:'200px', bor
 const saveBtnStyle: React.CSSProperties = { padding:'12px 32px', background:'#c9a96e', border:'none', color:'#fff', fontFamily:"'Montserrat',sans-serif", fontSize:'10px', fontWeight:500, letterSpacing:'2px', textTransform:'uppercase', cursor:'pointer', transition:'background 0.25s' };
 const cancelBtnStyle: React.CSSProperties = { padding:'12px 32px', background:'#f5f3ef', border:'1px solid #e8e4de', color:'#6b6560', fontFamily:"'Montserrat',sans-serif", fontSize:'10px', letterSpacing:'2px', textTransform:'uppercase', cursor:'pointer', transition:'background 0.25s' };
 const uploadBtnStyle: React.CSSProperties = { display:'block', width:'100%', padding:'12px', background:'#f5f3ef', border:'2px dashed #c9a96e', color:'#c9a96e', fontFamily:"'Montserrat',sans-serif", fontSize:'10px', fontWeight:500, letterSpacing:'2px', textTransform:'uppercase', cursor:'pointer', textAlign:'center', marginBottom:'4px', transition:'background 0.2s' };
+
+/* Order detail expansion */
+const orderDetailStyle: React.CSSProperties = { display:'flex', gap:'32px', padding:'24px 28px', alignItems:'flex-start' };
+const detailHeadStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-serif", fontSize:'9px', fontWeight:500, letterSpacing:'2.5px', textTransform:'uppercase', color:'#c9a96e', marginBottom:'10px' };
+const detailBoxStyle: React.CSSProperties = { background:'#fff', border:'1px solid #e8e4de', padding:'14px 16px' };
+const detailLineStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-serif", fontSize:'12px', fontWeight:300, color:'#1a1a1a', marginBottom:'4px' };
+const totalRowStyle: React.CSSProperties = { display:'flex', justifyContent:'space-between', fontFamily:"'Montserrat',sans-serif", fontSize:'12px', fontWeight:300, color:'#1a1a1a', marginBottom:'6px' };
+
+function statusPillStyle(status: string): React.CSSProperties {
+  const colours: Record<string,string> = { confirmed:'#c8d4c8', pending:'#d4d0c8', shipped:'#c8ccd4', delivered:'#c8d4c8', cancelled:'#d4c8c8' };
+  return { display:'inline-block', padding:'3px 10px', fontFamily:"'Montserrat',sans-serif", fontSize:'9px', letterSpacing:'1.5px', textTransform:'uppercase', color:'#1a1a1a', background: colours[status?.toLowerCase()] || '#e0dbd4' };
+}
+
+function paymentPillStyle(method: string): React.CSSProperties {
+  const colours: Record<string,string> = { card:'#c8ccd4', cod:'#d4cfc8', koko:'#d4c8d4' };
+  return { display:'inline-block', padding:'3px 10px', fontFamily:"'Montserrat',sans-serif", fontSize:'9px', letterSpacing:'1.5px', textTransform:'uppercase', color:'#1a1a1a', background: colours[method?.toLowerCase()] || '#e0dbd4' };
+}
 
 export default AdminPage;

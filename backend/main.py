@@ -744,6 +744,11 @@ async def get_all_products():
     products = db.get_all_products()
     return {"success": True, "count": len(products), "products": products}
 
+@app.get("/api/products/sales")
+async def get_product_sales():
+    """Returns total quantity sold per product, computed from all orders."""
+    return {"success": True, "sales": db.get_sales_by_product()}
+
 @app.get("/api/products/{product_id}")
 async def get_product(product_id: int):
     product = db.get_product_by_id(product_id)
@@ -971,7 +976,7 @@ def filter_products_by_profile(products, style, palette, top_k=6):
         enriched["match_score"] = score
         enriched["matching_colors"] = list(match)
         scored.append(enriched)
-    scored.sort(key=lambda x: (-x["match_score"], x.get("price", 0)))
+    scored.sort(key=lambda x: (-x["match_score"], -len(x.get("matching_colors", [])), x.get("product_id", 0)))
     return scored[:top_k]
 
 @app.post("/api/recommend/by-body")
@@ -980,6 +985,7 @@ async def recommend_by_body_profile(request: BodyProfileRequest):
         bmi = request.weight / ((request.height / 100) ** 2)
         style = "Average_Fit"
         palette = "Neutral_Classic"
+        palette2 = ""
         bmi_val, style_conf, color_conf, method = round(bmi, 2), 85.0, 90.0, "rule-based-fallback"
     else:
         try:
@@ -997,12 +1003,23 @@ async def recommend_by_body_profile(request: BodyProfileRequest):
 
     bmi_cat  = "Underweight" if bmi_val < 18.5 else "Healthy Weight" if bmi_val < 25.0 else "Overweight" if bmi_val < 30.0 else "Obese"
     all_products = db.get_all_products()
-    # Filter using primary palette, top up with secondary palette products
-    matched  = filter_products_by_profile(all_products, style, palette, 6)
-    if len(matched) < 6 and palette2:
-        extra = filter_products_by_profile(all_products, style, palette2, 6 - len(matched))
-        existing_ids = {p.get("id") for p in matched}
-        matched += [p for p in extra if p.get("id") not in existing_ids][: 6 - len(matched)]
+    # Get ALL products that actually match each palette (score > 0) up to 4 each
+    if palette2:
+        primary_all   = filter_products_by_profile(all_products, style, palette, 4)
+        secondary_all = filter_products_by_profile(all_products, style, palette2, 4)
+        primary_ids   = {p.get("id") for p in primary_all}
+        # Include ALL secondary products that have at least 1 matching color, not limited by price
+        secondary_matched = [p for p in secondary_all
+                             if p.get("id") not in primary_ids and len(p.get("matching_colors", [])) > 0]
+        secondary_unmatched = [p for p in secondary_all
+                               if p.get("id") not in primary_ids and len(p.get("matching_colors", [])) == 0]
+        # Fill slots: all color-matched secondary first, then fill remaining with primary
+        matched = primary_all + secondary_matched
+        # If still under 8, pad with unmatched secondary products
+        if len(matched) < 8:
+            matched += secondary_unmatched[:8 - len(matched)]
+    else:
+        matched = filter_products_by_profile(all_products, style, palette, 8)
     size_rec = get_size_recommendation(request.height, request.weight, request.gender)
 
     return {
@@ -1024,7 +1041,7 @@ async def model_status():
     return {"ml_models_loaded": models_ready()}
 
 # ==================== AUTH ENDPOINTS ====================
-from database import create_user, login_user, login_admin, get_all_users, delete_user, get_all_tryon_results, init_database
+from database import create_user, login_user, login_admin, get_all_users, delete_user, get_all_tryon_results, get_all_orders, init_database
 from pydantic import BaseModel as PydanticModel
 
 init_database()
@@ -1068,7 +1085,16 @@ async def get_tryon_results():
 
 @app.get("/api/admin/stats")
 async def get_admin_stats():
-    return {"status": "success", "total_users": len(get_all_users()), "total_tryons": len(get_all_tryon_results())}
+    return {
+        "status": "success",
+        "total_users": len(get_all_users()),
+        "total_tryons": len(get_all_tryon_results()),
+        "total_orders": len(get_all_orders()),
+    }
+
+@app.get("/api/admin/orders")
+async def get_admin_orders():
+    return {"success": True, "orders": get_all_orders()}
 
 # ==================== USER PROFILE ENDPOINTS ====================
 

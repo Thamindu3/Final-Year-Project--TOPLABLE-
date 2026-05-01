@@ -482,6 +482,47 @@ def get_user_orders(user_id: int) -> list:
         result.append(o)
     return result
 
+def get_sales_by_product() -> dict:
+    """Returns {product_id: total_quantity_sold} aggregated from all orders."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT items FROM Orders")
+    rows = cursor.fetchall()
+    conn.close()
+    sales: dict = {}
+    for row in rows:
+        items = json.loads(row['items'] or '[]')
+        for item in items:
+            pid = item.get('product_id')
+            qty = int(item.get('quantity', 1))
+            if pid:
+                sales[pid] = sales.get(pid, 0) + qty
+    return sales
+
+def get_all_orders() -> list:
+    """Get all orders with customer details (for admin panel)."""
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT o.order_id, o.user_id, o.items, o.subtotal, o.shipping,
+               o.discount, o.total, o.status, o.address, o.created_at,
+               u.name  AS user_name,
+               u.email AS user_email,
+               u.mobile_number AS user_mobile
+        FROM Orders o
+        LEFT JOIN Users u ON o.user_id = u.user_id
+        ORDER BY o.created_at DESC
+    """)
+    rows = cursor.fetchall()
+    conn.close()
+    result = []
+    for row in rows:
+        o = dict(row)
+        o['items']   = json.loads(o.get('items')   or '[]')
+        o['address'] = json.loads(o.get('address') or '{}')
+        result.append(o)
+    return result
+
 # ── USER PROFILE FUNCTIONS ────────────────────────────────────
 
 def get_user_profile(user_id: int):
