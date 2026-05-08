@@ -658,6 +658,36 @@ async def run_tryon(person_name: str = Query(...)):
         if pairs_file.exists(): pairs_file.unlink()
         raise HTTPException(status_code=500, detail=str(e))
 
+# ── SAVE TRY-ON RESULT ────────────────────────────────────────
+class SaveTryonRequest(PydanticBaseModel):
+    user_id: int
+    output_image_path: str
+    person_image_path: str = ''
+    cloth_image_path: str = ''
+    product_id: int = None
+
+@app.post("/api/tryon/save")
+async def save_tryon(req: SaveTryonRequest):
+    try:
+        result_id = save_tryon_result(
+            user_id=req.user_id,
+            output_image_path=req.output_image_path,
+            person_image_path=req.person_image_path,
+            cloth_image_path=req.cloth_image_path,
+            product_id=req.product_id,
+        )
+        return {"status": "success", "result_id": result_id}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/tryon/history/{user_id}")
+async def get_tryon_history(user_id: int):
+    try:
+        results = get_user_tryon_results(user_id)
+        return {"status": "success", "results": results}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @app.get("/result/{job_name}/{filename}")
 async def get_result_image(job_name: str, filename: str):
     path = RESULT_DIR / job_name / filename
@@ -1154,7 +1184,7 @@ async def model_status():
     return {"ml_models_loaded": models_ready()}
 
 # ==================== AUTH ENDPOINTS ====================
-from database import create_user, login_user, login_admin, get_all_users, delete_user, get_all_tryon_results, get_all_orders, init_database
+from database import create_user, login_user, login_admin, get_all_users, delete_user, get_all_tryon_results, get_user_tryon_results, get_all_orders, init_database, save_tryon_result
 from pydantic import BaseModel as PydanticModel
 
 init_database()
@@ -1203,6 +1233,14 @@ async def get_admin_stats():
         "total_users": len(get_all_users()),
         "total_tryons": len(get_all_tryon_results()),
         "total_orders": len(get_all_orders()),
+    }
+
+@app.get("/api/public/stats")
+async def get_public_stats():
+    return {
+        "status": "success",
+        "total_users": len(get_all_users()),
+        "total_tryons": len(get_all_tryon_results()),
     }
 
 @app.get("/api/admin/orders")

@@ -25,9 +25,13 @@ interface UserData {
 
 interface TryOnResult {
   result_id: number;
-  product_id: number;
+  product_id?: number;
   status: string;
   output_image_path?: string;
+  person_image_path?: string;
+  cloth_image_path?: string;
+  product_name?: string;
+  product_category?: string;
   created_at: string;
 }
 
@@ -67,7 +71,8 @@ const PROFILE_SKIN_TONES = [
 
 const UserProfilePage: React.FC = () => {
   const [user, setUser] = useState<UserData | null>(null);
-  const [tryOnResults] = useState<TryOnResult[]>([]);
+  const [tryOnResults, setTryOnResults] = useState<TryOnResult[]>([]);
+  const [tryOnLoading, setTryOnLoading] = useState(false);
   const [orders, setOrders] = useState<Order[]>([]);
   const [productColorImages, setProductColorImages] = useState<Record<number, Record<string, string>>>({});
   const [loading, setLoading] = useState(true);
@@ -84,13 +89,11 @@ const UserProfilePage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (activeTab === 'order-history') {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        const u = JSON.parse(storedUser);
-        fetchOrders(u.user_id);
-      }
-    }
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) return;
+    const u = JSON.parse(storedUser);
+    if (activeTab === 'order-history') fetchOrders(u.user_id);
+    if (activeTab === 'tryon-history') fetchTryOnHistory(u.user_id);
   }, [activeTab]);
 
   const fetchUserData = async () => {
@@ -145,6 +148,21 @@ const UserProfilePage: React.FC = () => {
       }
     } catch (e) {
       console.error('Failed to fetch orders:', e);
+    }
+  };
+
+  const fetchTryOnHistory = async (userId: number) => {
+    setTryOnLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/tryon/history/${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTryOnResults(data.results || []);
+      }
+    } catch (e) {
+      console.error('Failed to fetch try-on history:', e);
+    } finally {
+      setTryOnLoading(false);
     }
   };
 
@@ -636,7 +654,11 @@ const UserProfilePage: React.FC = () => {
                   </h2>
                 </div>
 
-                {tryOnResults.length === 0 ? (
+                {tryOnLoading ? (
+                  <div style={emptyStateStyle}>
+                    <p style={historyDateStyle}>Loading your try-on history…</p>
+                  </div>
+                ) : tryOnResults.length === 0 ? (
                   <div style={emptyStateStyle}>
                     <p style={emptyIconStyle}>👔</p>
                     <p style={emptyTitleStyle}>No Try-Ons Yet</p>
@@ -651,6 +673,7 @@ const UserProfilePage: React.FC = () => {
                   <div style={historyGridStyle}>
                     {tryOnResults.map((result) => (
                       <div key={result.result_id} style={historyCardStyle}>
+                        {/* Result image (main) */}
                         <div style={historyImageStyle}>
                           {result.output_image_path ? (
                             <img
@@ -662,14 +685,45 @@ const UserProfilePage: React.FC = () => {
                             <div style={placeholderStyle}>No Image</div>
                           )}
                         </div>
+
+                        {/* Cloth + person thumbnails */}
+                        {(result.cloth_image_path || result.person_image_path) && (
+                          <div style={historyThumbRowStyle}>
+                            {result.person_image_path && (
+                              <div style={historyThumbStyle}>
+                                <img
+                                  src={`${API_BASE_URL}${result.person_image_path}`}
+                                  alt="Model"
+                                  style={{ width:'100%', height:'100%', objectFit:'cover' }}
+                                />
+                                <p style={historyThumbLabelStyle}>Model</p>
+                              </div>
+                            )}
+                            {result.cloth_image_path && (
+                              <div style={historyThumbStyle}>
+                                <img
+                                  src={`${API_BASE_URL}${result.cloth_image_path}`}
+                                  alt="Clothing"
+                                  style={{ width:'100%', height:'100%', objectFit:'cover' }}
+                                />
+                                <p style={historyThumbLabelStyle}>Clothing</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
                         <div style={historyInfoStyle}>
+                          {result.product_name && (
+                            <p style={historyStatusStyle}>
+                              <span style={{ color: '#c9a96e' }}>{result.product_category}</span>{' '}· {result.product_name}
+                            </p>
+                          )}
                           <p style={historyDateStyle}>
-                            {new Date(result.created_at).toLocaleDateString()}
+                            {new Date(result.created_at).toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' })}
                           </p>
                           <p style={historyStatusStyle}>
-                            Status: <span style={{ color: '#c9a96e' }}>{result.status}</span>
+                            Status: <span style={{ color: '#4caf50' }}>{result.status}</span>
                           </p>
-                          <button style={viewDetailsBtnStyle}>View Details</button>
                         </div>
                       </div>
                     ))}
@@ -1723,6 +1777,35 @@ const orderMetaTextStyle: React.CSSProperties = {
   fontSize: '10px',
   fontWeight: 300,
   color: '#9a9590',
+};
+
+const historyThumbRowStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: '1px',
+  background: '#e8e4de',
+  borderTop: '1px solid #e8e4de',
+};
+const historyThumbStyle: React.CSSProperties = {
+  position: 'relative',
+  height: '100px',
+  overflow: 'hidden',
+  background: '#fafaf8',
+};
+const historyThumbLabelStyle: React.CSSProperties = {
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  right: 0,
+  padding: '4px 6px',
+  background: 'rgba(0,0,0,0.45)',
+  fontFamily: "'Montserrat', sans-serif",
+  fontSize: '9px',
+  fontWeight: 500,
+  letterSpacing: '1.5px',
+  textTransform: 'uppercase',
+  color: '#fff',
+  textAlign: 'center',
 };
 
 /* Footer */

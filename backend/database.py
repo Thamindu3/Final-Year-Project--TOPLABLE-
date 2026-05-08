@@ -97,6 +97,12 @@ def init_database():
         )
     """)
 
+    # migrate: add cloth_image_path if missing
+    try:
+        cursor.execute("ALTER TABLE TryOnResults ADD COLUMN cloth_image_path TEXT DEFAULT ''")
+    except Exception:
+        pass
+
     # ── PRODUCT VIEWS TABLE (for recommendations) ─────────────
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS ProductViews (
@@ -242,33 +248,49 @@ def login_admin(email: str, password: str):
 
 # ── TRY-ON RESULT FUNCTIONS ───────────────────────────────────
 
-def save_tryon_result(user_id: int, product_id: int,
-                      person_image_path: str, output_image_path: str,
-                      status: str = "success"):
-    """Save a try-on result to the database."""
+def save_tryon_result(user_id: int, output_image_path: str,
+                      person_image_path: str = '', cloth_image_path: str = '',
+                      product_id: int = None, status: str = "success"):
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
         INSERT INTO TryOnResults
-            (user_id, product_id, person_image_path, output_image_path, status)
-        VALUES (?, ?, ?, ?, ?)
-    """, (user_id, product_id, person_image_path, output_image_path, status))
+            (user_id, product_id, person_image_path, cloth_image_path, output_image_path, status)
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (user_id, product_id, person_image_path, cloth_image_path, output_image_path, status))
     conn.commit()
     result_id = cursor.lastrowid
     conn.close()
     return result_id
 
 def get_all_tryon_results():
-    """Get all try-on results for admin panel."""
     conn = get_connection()
     cursor = conn.cursor()
     cursor.execute("""
-        SELECT r.result_id, u.name as user_name, u.email,
-               r.status, r.output_image_path, r.created_at
+        SELECT r.result_id, r.user_id, u.name as user_name, u.email,
+               r.status, r.person_image_path, r.cloth_image_path,
+               r.output_image_path, r.product_id, r.created_at
         FROM TryOnResults r
         LEFT JOIN Users u ON r.user_id = u.user_id
         ORDER BY r.created_at DESC
     """)
+    rows = cursor.fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
+
+def get_user_tryon_results(user_id: int):
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT r.result_id, r.user_id, r.status,
+               r.person_image_path, r.cloth_image_path,
+               r.output_image_path, r.product_id, r.created_at,
+               p.name as product_name, p.category as product_category
+        FROM TryOnResults r
+        LEFT JOIN Products p ON r.product_id = p.product_id
+        WHERE r.user_id = ?
+        ORDER BY r.created_at DESC
+    """, (user_id,))
     rows = cursor.fetchall()
     conn.close()
     return [dict(row) for row in rows]

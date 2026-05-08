@@ -1,293 +1,165 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+
+/* ─── Animated count-up hook ─────────────────────────────────── */
+function useCountUp(target: number, duration = 2000, trigger = false) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    if (!trigger || target === 0) { setCount(0); return; }
+    const start = Date.now();
+    const id = setInterval(() => {
+      const p = Math.min((Date.now() - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setCount(Math.round(eased * target));
+      if (p >= 1) clearInterval(id);
+    }, 16);
+    return () => clearInterval(id);
+  }, [target, trigger, duration]);
+  return count;
+}
+
+const API = 'http://localhost:8000';
 
 const HomePage: React.FC = () => {
   const [loaded, setLoaded] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [bestSellers, setBestSellers] = useState<any[]>([]);
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [totalTryons, setTotalTryons] = useState(0);
+  const [countersVisible, setCountersVisible] = useState(false);
+  const statsRef = useRef<HTMLDivElement>(null);
+
+  /* animated counter values */
+  const usersCount   = useCountUp(totalUsers,   2200, countersVisible);
+  const tryonsCount  = useCountUp(totalTryons,  2000, countersVisible);
+  const vitonAcc     = useCountUp(87,            1800, countersVisible);
+  const knnAcc       = useCountUp(82,            1600, countersVisible);
 
   useEffect(() => {
     setTimeout(() => setLoaded(true), 100);
 
-    // ✅ Check login state and role on mount
     const checkAuthStatus = () => {
       const storedUser = localStorage.getItem('user');
       const storedRole = localStorage.getItem('role');
       setIsLoggedIn(!!storedUser);
       setUserRole(storedRole);
     };
-
     checkAuthStatus();
-
-    // Listen for storage changes (logout from other tabs)
     window.addEventListener('storage', checkAuthStatus);
 
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
-    };
-
+    const handleScroll = () => setScrolled(window.scrollY > 50);
     window.addEventListener('scroll', handleScroll);
+
+    /* fetch best sellers */
+    fetch(`${API}/api/recommendations/popular?top_k=4`)
+      .then(r => r.json())
+      .then(d => setBestSellers(d.recommendations || []))
+      .catch(() => {});
+
+    /* fetch stats */
+    fetch(`${API}/api/admin/stats`)
+      .then(r => r.json())
+      .then(d => {
+        setTotalUsers(d.total_users || 0);
+        setTotalTryons(d.total_tryons || 0);
+      })
+      .catch(() => {});
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('storage', checkAuthStatus);
     };
   }, []);
 
+  /* intersection observer for counter trigger */
+  useEffect(() => {
+    const el = statsRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => { setCountersVisible(entry.isIntersecting); },
+      { threshold: 0.25 }
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
+
   return (
     <div style={wrapperStyle}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500&display=swap');
-
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        .viton-header {
-          opacity: 0;
-          transform: translateY(-20px);
-          transition: opacity 0.8s ease, transform 0.8s ease;
-        }
-        .viton-header.loaded {
-          opacity: 1;
-          transform: translateY(0);
-        }
-        .viton-header.scrolled {
-          opacity: 0;
-          transform: translateY(-30px);
-          pointer-events: none;
-        }
-        .viton-logo-link {
-          text-decoration: none;
-          color: inherit;
-          transition: opacity 0.3s ease;
-        }
-        .viton-logo-link:hover {
-          opacity: 0.7;
-        }
+        .viton-header { opacity:0; transform:translateY(-20px); transition:opacity 0.8s ease,transform 0.8s ease; }
+        .viton-header.loaded { opacity:1; transform:translateY(0); }
+        .viton-header.scrolled { opacity:0; transform:translateY(-30px); pointer-events:none; }
 
-        .viton-hero-text {
-          opacity: 0;
-          transform: translateY(40px);
-          transition: opacity 1.2s ease, transform 1.2s ease;
-        }
-        .viton-hero-text.loaded {
-          opacity: 1;
-          transform: translateY(0);
-        }
-        .viton-hero-sub {
-          opacity: 0;
-          transform: translateY(30px);
-          transition: opacity 1s ease 0.4s, transform 1s ease 0.4s;
-        }
-        .viton-hero-sub.loaded {
-          opacity: 1;
-          transform: translateY(0);
-        }
-        .viton-hero-cta {
-          opacity: 0;
-          transition: opacity 0.8s ease 0.8s;
-        }
-        .viton-hero-cta.loaded {
-          opacity: 1;
-        }
-        .viton-btn-primary {
-          display: inline-block;
-          padding: 34px 66px;
-          background: #fff;
-          color: #1a1a1a;
-          text-decoration: none;
-          font-family: 'Montserrat', sans-serif;
-          font-size: 20px;
-          font-weight: 500;
-          letter-spacing: 3px;
-          text-transform: uppercase;
-          transition: background 0.3s ease, color 0.3s ease;
-        }
-        .viton-btn-primary:hover {
-          background: #c9a96e;
-          color: #fff;
-        }
-        .viton-btn-secondary {
-          display: inline-block;
-          padding: 34px 66px;
-          background: transparent;
-          color: #fff;
-          text-decoration: none;
-          font-family: 'Montserrat', sans-serif;
-          font-size: 20px;
-          font-weight: 500;
-          letter-spacing: 3px;
-          text-transform: uppercase;
-          border: 1px solid rgba(255,255,255,0.6);
-          transition: border-color 0.3s ease, background 0.3s ease;
-        }
-        .viton-btn-secondary:hover {
-          border-color: #c9a96e;
-          background: rgba(201,169,110,0.15);
-        }
-        .viton-feature-card {
-          padding: 48px 36px;
-          background: #fafaf8;
-          border-top: 1px solid #e8e4de;
-          transition: background 0.3s ease;
-          cursor: default;
-        }
-        .viton-feature-card:hover {
-          background: #f2ede7;
-        }
-        .viton-feature-card:hover .viton-feature-icon {
-          transform: scale(1.1);
-        }
-        .viton-feature-icon {
-          transition: transform 0.3s ease;
-          display: block;
-          margin-bottom: 20px;
-        }
-        .viton-stat {
-          border-left: 1px solid #d4cfc8;
-        }
-        .viton-marquee-inner {
-          animation: marquee 18s linear infinite;
-          white-space: nowrap;
-        }
-        @keyframes marquee {
-          from { transform: translateX(0); }
-          to { transform: translateX(-50%); }
-        }
-        .viton-section-link {
-          display: inline-flex;
-          align-items: center;
-          gap: 8px;
-          font-family: 'Montserrat', sans-serif;
-          font-size: 10px;
-          font-weight: 500;
-          letter-spacing: 3px;
-          text-transform: uppercase;
-          color: #1a1a1a;
-          text-decoration: none;
-          border-bottom: 1px solid #1a1a1a;
-          padding-bottom: 2px;
-          transition: color 0.3s, border-color 0.3s;
-        }
-        .viton-section-link:hover {
-          color: #c9a96e;
-          border-color: #c9a96e;
-        }
+        .viton-logo-link { text-decoration:none; color:inherit; transition:opacity 0.3s ease; }
+        .viton-logo-link:hover { opacity:0.7; }
 
-.viton-login-btn {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          width: 42px;
-          height: 42px;
-          border-radius: 999px;
-          border: 1.5px solid rgba(255,255,255,0.75);
-          background: rgba(255,255,255,0.15);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          cursor: pointer;
-          transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
-          pointer-events: auto;
-          text-decoration: none;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.3);
-        }
-        .viton-login-btn:hover {
-          border-color: #c9a96e;
-          background: rgba(201,169,110,0.25);
-          transform: translateY(-2px);
-          box-shadow: 0 4px 16px rgba(201,169,110,0.4);
-        }
-        .viton-login-btn svg {
-          width: 18px;
-          height: 18px;
-          stroke: rgba(255,255,255,0.95);
-          stroke-width: 2;
-        }
-        .viton-login-btn:hover svg {
-          stroke: #ffffff;
-        }
+        .viton-hero-text { opacity:0; transform:translateY(40px); transition:opacity 1.2s ease,transform 1.2s ease; }
+        .viton-hero-text.loaded { opacity:1; transform:translateY(0); }
+        .viton-hero-sub { opacity:0; transform:translateY(30px); transition:opacity 1s ease 0.4s,transform 1s ease 0.4s; }
+        .viton-hero-sub.loaded { opacity:1; transform:translateY(0); }
+        .viton-hero-cta { opacity:0; transition:opacity 0.8s ease 0.8s; }
+        .viton-hero-cta.loaded { opacity:1; }
 
-        .viton-recommendations-btn {
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-          gap: 6px;
-          padding: 10px 18px;
-          border-radius: 999px;
-          border: 1.5px solid rgba(255,255,255,0.75);
-          background: rgba(255,255,255,0.15);
-          backdrop-filter: blur(10px);
-          -webkit-backdrop-filter: blur(10px);
-          cursor: pointer;
-          transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease;
-          pointer-events: auto;
-          text-decoration: none;
-          box-shadow: 0 2px 12px rgba(0,0,0,0.3);
-          font-family: 'Montserrat', sans-serif;
-          font-size: 10px;
-          font-weight: 500;
-          letter-spacing: 2px;
-          text-transform: uppercase;
-          color: rgba(255,255,255,0.95);
-          white-space: nowrap;
-        }
-        .viton-recommendations-btn:hover {
-          border-color: #c9a96e;
-          background: rgba(201,169,110,0.25);
-          transform: translateY(-2px);
-          box-shadow: 0 4px 16px rgba(201,169,110,0.4);
-          color: #ffffff;
-        }
-        .viton-recommendations-btn svg {
-          width: 16px;
-          height: 16px;
-          stroke: rgba(255,255,255,0.95);
-          stroke-width: 2;
-          flex-shrink: 0;
-        }
-        .viton-recommendations-btn:hover svg {
-          stroke: #ffffff;
-        }
+        .viton-btn-primary { display:inline-block; padding:34px 66px; background:#fff; color:#1a1a1a; text-decoration:none; font-family:'Montserrat',sans-serif; font-size:20px; font-weight:500; letter-spacing:3px; text-transform:uppercase; transition:background 0.3s ease,color 0.3s ease; }
+        .viton-btn-primary:hover { background:#c9a96e; color:#fff; }
+        .viton-btn-secondary { display:inline-block; padding:34px 66px; background:transparent; color:#fff; text-decoration:none; font-family:'Montserrat',sans-serif; font-size:20px; font-weight:500; letter-spacing:3px; text-transform:uppercase; border:1px solid rgba(255,255,255,0.6); transition:border-color 0.3s ease,background 0.3s ease; }
+        .viton-btn-secondary:hover { border-color:#c9a96e; background:rgba(201,169,110,0.15); }
 
-        .viton-nav-link {
-          font-family: 'Montserrat', sans-serif;
-          font-size: 10px;
-          font-weight: 500;
-          letter-spacing: 2.5px;
-          text-transform: uppercase;
-          color: rgba(255,255,255,0.8);
-          text-decoration: none;
-          pointer-events: auto;
-          transition: color 0.25s ease;
-          white-space: nowrap;
-        }
-        .viton-nav-link:hover {
-          color: #c9a96e;
-        }
+        .viton-stat { border-left:1px solid #333; }
 
-        @media (max-width: 900px) {
-          .viton-center-nav { display: none !important; }
+        .viton-marquee-inner { animation:marquee 18s linear infinite; white-space:nowrap; }
+        @keyframes marquee { from { transform:translateX(0); } to { transform:translateX(-50%); } }
+
+        .viton-section-link { display:inline-flex; align-items:center; gap:8px; font-family:'Montserrat',sans-serif; font-size:10px; font-weight:500; letter-spacing:3px; text-transform:uppercase; color:#1a1a1a; text-decoration:none; border-bottom:1px solid #1a1a1a; padding-bottom:2px; transition:color 0.3s,border-color 0.3s; }
+        .viton-section-link:hover { color:#c9a96e; border-color:#c9a96e; }
+
+        .viton-login-btn { display:inline-flex; align-items:center; justify-content:center; width:42px; height:42px; border-radius:999px; border:1.5px solid rgba(255,255,255,0.75); background:rgba(255,255,255,0.15); backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px); cursor:pointer; transition:border-color 0.25s ease,background 0.25s ease,transform 0.25s ease,box-shadow 0.25s ease; pointer-events:auto; text-decoration:none; box-shadow:0 2px 12px rgba(0,0,0,0.3); }
+        .viton-login-btn:hover { border-color:#c9a96e; background:rgba(201,169,110,0.25); transform:translateY(-2px); box-shadow:0 4px 16px rgba(201,169,110,0.4); }
+        .viton-login-btn svg { width:18px; height:18px; stroke:rgba(255,255,255,0.95); stroke-width:2; }
+        .viton-login-btn:hover svg { stroke:#ffffff; }
+
+        .viton-nav-link { font-family:'Montserrat',sans-serif; font-size:10px; font-weight:500; letter-spacing:2.5px; text-transform:uppercase; color:rgba(255,255,255,0.8); text-decoration:none; pointer-events:auto; transition:color 0.25s ease; white-space:nowrap; }
+        .viton-nav-link:hover { color:#c9a96e; }
+
+        /* best sellers */
+        .bs-card { background:#fff; border:1px solid #e8e4de; overflow:hidden; transition:box-shadow 0.3s ease,transform 0.3s ease; cursor:pointer; text-decoration:none; display:flex; flex-direction:column; }
+        .bs-card:hover { box-shadow:0 8px 32px rgba(0,0,0,0.10); transform:translateY(-4px); }
+        .bs-card:hover .bs-img { transform:scale(1.04); }
+        .bs-img { width:100%; aspect-ratio:3/4; object-fit:cover; transition:transform 0.5s ease; display:block; }
+        .bs-img-wrap { overflow:hidden; }
+
+        /* stat counter */
+        .stat-counter { display:flex; flex-direction:column; align-items:center; padding:56px 36px; position:relative; }
+        .stat-counter + .stat-counter::before { content:''; position:absolute; left:0; top:50%; transform:translateY(-50%); height:48px; width:1px; background:rgba(255,255,255,0.12); }
+        .stat-value { font-family:'Cormorant Garamond',serif; font-size:clamp(40px,6vw,68px); font-weight:300; color:#c9a96e; line-height:1; margin-bottom:12px; }
+        .stat-label { font-family:'Montserrat',sans-serif; font-size:10px; font-weight:500; letter-spacing:3px; text-transform:uppercase; color:rgba(255,255,255,0.45); text-align:center; }
+        .stat-suffix { color:#c9a96e; }
+
+        /* accuracy bar */
+        .acc-bar-bg { width:100%; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; margin-top:16px; overflow:hidden; }
+        .acc-bar-fill { height:100%; background:#c9a96e; border-radius:2px; transition:width 2s cubic-bezier(0.22,1,0.36,1); }
+
+        @media (max-width:900px) { .viton-center-nav { display:none !important; } }
+        @media (max-width:768px) {
+          .bs-grid { grid-template-columns: repeat(2,1fr) !important; }
+          .stats-grid { grid-template-columns: repeat(2,1fr) !important; }
         }
-        @media (max-width: 768px) {
-          .viton-recommendations-btn span {
-            display: none;
-          }
-          .viton-recommendations-btn {
-            padding: 10px 12px;
-          }
+        @media (max-width:480px) {
+          .bs-grid { grid-template-columns: 1fr !important; }
+          .stats-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
 
       {/* ── HEADER ── */}
-      <header
-        className={`viton-header ${loaded ? 'loaded' : ''} ${scrolled ? 'scrolled' : ''}`}
-        style={headerStyle}
-      >
-        {/* Logo */}
+      <header className={`viton-header ${loaded ? 'loaded' : ''} ${scrolled ? 'scrolled' : ''}`} style={headerStyle}>
         <Link to="/" className="viton-logo-link" style={{ pointerEvents: 'auto' }}>
           <h1 style={logoStyle}>TOP LABLE</h1>
         </Link>
-
-        {/* ── CENTER NAV LINKS ── */}
         <nav className="viton-center-nav" style={centerNavStyle}>
           <Link to="/" className="viton-nav-link">Home</Link>
           <Link to="/products" className="viton-nav-link">Products</Link>
@@ -295,29 +167,18 @@ const HomePage: React.FC = () => {
           <Link to="/body-recommend" className="viton-nav-link">Body Fit</Link>
           <Link to="/about" className="viton-nav-link">About</Link>
         </nav>
-
-        {/* ── RIGHT: Profile / Admin / Login ── */}
         <div style={headerButtonsRowStyle}>
           {isLoggedIn && userRole === 'admin' ? (
-            <Link to="/admin" className="viton-login-btn" aria-label="Admin Dashboard" title="Admin Dashboard">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M20 21a8 8 0 0 0-16 0" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M12 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+            <Link to="/admin" className="viton-login-btn" aria-label="Admin Dashboard">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M20 21a8 8 0 0 0-16 0" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </Link>
           ) : isLoggedIn ? (
-            <Link to="/profile" className="viton-login-btn" aria-label="Your Profile" title="Profile">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M20 21a8 8 0 0 0-16 0" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M12 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+            <Link to="/profile" className="viton-login-btn" aria-label="Your Profile">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M20 21a8 8 0 0 0-16 0" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </Link>
           ) : (
-            <Link to="/login" className="viton-login-btn" aria-label="Login" title="Login">
-              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M20 21a8 8 0 0 0-16 0" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M12 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
+            <Link to="/login" className="viton-login-btn" aria-label="Login">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M20 21a8 8 0 0 0-16 0" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M12 11a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
             </Link>
           )}
         </div>
@@ -328,153 +189,98 @@ const HomePage: React.FC = () => {
         <video autoPlay muted loop playsInline style={heroVideoStyle}>
           <source src="/hero-video.mp4" type="video/mp4" />
         </video>
-
         <div style={heroOverlayStyle} />
         <div style={heroGradientStyle} />
-
-<div style={heroContentStyle}>
+        <div style={heroContentStyle}>
           <div className={`viton-hero-text ${loaded ? 'loaded' : ''}`}>
-            <h1 style={heroTitleStyle}>
-              WEAR IT
-              <br />
-              <em style={{ fontStyle: 'italic', fontWeight: 300 }}>BEFORE</em>
-              <br />
-              YOU BUY IT
-            </h1>
+            <h1 style={heroTitleStyle}>WEAR IT<br /><em style={{ fontStyle:'italic', fontWeight:300 }}>BEFORE</em><br />YOU BUY IT</h1>
           </div>
-
           <div className={`viton-hero-sub ${loaded ? 'loaded' : ''}`} style={heroSubContainerStyle}>
-            <p style={heroSubtitleStyle}>
-              Experience AI-powered virtual try-on technology
-              <br />
-              that lets you see how clothes look on <em>your</em> body.
-            </p>
+            <p style={heroSubtitleStyle}>Experience AI-powered virtual try-on technology<br />that lets you see how clothes look on <em>your</em> body.</p>
           </div>
-
           <div className={`viton-hero-cta ${loaded ? 'loaded' : ''}`} style={heroCTAStyle}>
-            <Link to="/products" className="viton-btn-primary">
-              Browse Collection
-            </Link>
-            <Link to="/virtual-tryon" className="viton-btn-secondary">
-              Try It On
-            </Link>
+            <Link to="/products" className="viton-btn-primary">Browse Collection</Link>
+            <Link to="/virtual-tryon" className="viton-btn-secondary">Try It On</Link>
           </div>
         </div>
-
         <div style={heroCornerStyle}>
           <span style={heroCornerTextStyle}>Virtual Try-On →</span>
         </div>
       </section>
 
-      {/* ── MARQUEE STRIP ── */}
+      {/* ── MARQUEE ── */}
       <div style={marqueeStyle}>
         <div className="viton-marquee-inner">
           {[...Array(2)].map((_, i) => (
             <span key={i} style={marqueeTextStyle}>
-              Virtual Try-On&nbsp;&nbsp;·&nbsp;&nbsp;
-              AI Recommendations&nbsp;&nbsp;·&nbsp;&nbsp;
-              Browse Collection&nbsp;&nbsp;·&nbsp;&nbsp;
-              Personalised Style&nbsp;&nbsp;·&nbsp;&nbsp;
-              Fashion Forward&nbsp;&nbsp;·&nbsp;&nbsp;
-              Sri Lankan Design&nbsp;&nbsp;·&nbsp;&nbsp;
+              Virtual Try-On&nbsp;&nbsp;·&nbsp;&nbsp;AI Recommendations&nbsp;&nbsp;·&nbsp;&nbsp;Browse Collection&nbsp;&nbsp;·&nbsp;&nbsp;Personalised Style&nbsp;&nbsp;·&nbsp;&nbsp;Fashion Forward&nbsp;&nbsp;·&nbsp;&nbsp;Sri Lankan Design&nbsp;&nbsp;·&nbsp;&nbsp;
             </span>
           ))}
         </div>
       </div>
 
-      {/* ── ABOUT STRIP ── */}
-      <section style={aboutStripStyle}>
-        <div style={aboutInnerStyle}>
-          <p style={aboutOverlineStyle}>About</p>
-          <p style={aboutTextStyle}>
-            We create immersive digital fashion experiences that bridge the gap between
-            online browsing and the confidence of trying on in person.
-          </p>
-        </div>
-        <Link to="/products" className="viton-section-link" style={{ alignSelf: 'flex-end' }}>
-          View Products →
-        </Link>
-      </section>
-
-      {/* ── FEATURES GRID ── */}
-      <section style={featuresSectionStyle}>
-        <div style={featuresHeaderStyle}>
-          <p style={featuresOverlineStyle}>What We Offer</p>
-          <h2 style={featuresTitleStyle}>
-            Three Pillars of<br /><em>Modern Shopping</em>
-          </h2>
-        </div>
-
-        <div style={featuresGridStyle}>
-          {[
-            {
-              num: '01',
-              icon: '🛍️',
-              title: 'Browse Collection',
-              desc: 'Explore our curated catalogue of clothing items, filtered by category, colour, and size.',
-              link: '/products',
-              linkLabel: 'View Products',
-            },
-            {
-              num: '02',
-              icon: '👔',
-              title: 'Virtual Try-On',
-              desc: 'Upload your photo and see exactly how any garment looks on your unique body shape.',
-              link: '/virtual-tryon',
-              linkLabel: 'Try It Now',
-            },
-            {
-              num: '03',
-              icon: '🤖',
-              title: 'AI Recommendations',
-              desc: 'Our intelligent engine learns your style and suggests outfits you\'ll love.',
-              link: '/recommendations',
-              linkLabel: 'Discover More',
-            },
-          ].map((item) => (
-            <div key={item.num} className="viton-feature-card" style={featureCardStyle}>
-              <span className="viton-feature-icon" style={featureIconStyle}>{item.icon}</span>
-              <p style={featureNumStyle}>{item.num}</p>
-              <h3 style={featureTitleStyle}>{item.title}</h3>
-              <p style={featureDescStyle}>{item.desc}</p>
-              <Link to={item.link} className="viton-section-link" style={{ marginTop: '28px', display: 'inline-flex' }}>
-                {item.linkLabel}
-              </Link>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* ── STATS ROW ── */}
-      <section style={statsSectionStyle}>
-        {[
-          { value: 'VITON-HD', label: 'AI Model' },
-          { value: '2D', label: 'Try-On Technology' },
-          { value: 'KNN', label: 'Recommendation Engine' },
-          { value: 'FastAPI', label: 'Powered By' },
-        ].map((s, i) => (
-          <div key={i} className={i > 0 ? 'viton-stat' : ''} style={statItemStyle}>
-            <p style={statValueStyle}>{s.value}</p>
-            <p style={statLabelStyle}>{s.label}</p>
+      {/* ── BEST SELLERS ── */}
+      {bestSellers.length > 0 && (
+        <section style={bsSectionStyle}>
+          <div style={bsHeaderStyle}>
+            <p style={bsOverlineStyle}>Trending Now</p>
+            <h2 style={bsTitleStyle}>Best Selling<br /><em>Clothing</em></h2>
+            <Link to="/products" className="viton-section-link" style={{ marginTop:'8px' }}>Shop All →</Link>
           </div>
-        ))}
-      </section>
+          <div className="bs-grid" style={bsGridStyle}>
+            {bestSellers.map((p: any) => (
+              <Link to={`/products`} key={p.id} className="bs-card">
+                <div className="bs-img-wrap">
+                  <img
+                    className="bs-img"
+                    src={p.image_url || `${API}/static/products/placeholder.jpg`}
+                    alt={p.name}
+                    onError={(e) => { (e.target as HTMLImageElement).src = 'https://via.placeholder.com/400x533?text=No+Image'; }}
+                  />
+                </div>
+                <div style={bsCardBodyStyle}>
+                  <p style={bsCategoryStyle}>{p.category}</p>
+                  <h3 style={bsNameStyle}>{p.name}</h3>
+                  <p style={bsPriceStyle}>LKR {(p.price || 0).toLocaleString()}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
-      {/* ── FINAL CTA ── */}
-      <section style={finalCTAStyle}>
-        <div style={finalCTAInnerStyle}>
-          <p style={finalCTAOverlineStyle}>Get Started</p>
-          <h2 style={finalCTATitleStyle}>
-            Ready to Transform<br />
-            <em>Your Shopping Experience?</em>
-          </h2>
-          <div style={finalCTAButtonsStyle}>
-            <Link to="/virtual-tryon" className="viton-btn-primary" style={{ background: '#c9a96e', color: '#fff' }}>
-              Try On Now
-            </Link>
-            <Link to="/products" className="viton-btn-secondary" style={{ color: '#1a1a1a', borderColor: '#1a1a1a' }}>
-              Shop Collection
-            </Link>
+      {/* ── ANIMATED STATS ── */}
+      <section ref={statsRef} style={statsSectionStyle}>
+        <div style={statsInnerStyle}>
+          <p style={statsOverlineStyle}>By The Numbers</p>
+          <h2 style={statsTitleStyle}>Platform<br /><em>Performance</em></h2>
+        </div>
+        <div className="stats-grid" style={statsGridStyle}>
+          {/* Users */}
+          <div className="stat-counter">
+            <p className="stat-value">{usersCount.toLocaleString()}<span className="stat-suffix">+</span></p>
+            <p className="stat-label">Users Signed Up</p>
+          </div>
+          {/* Try-ons */}
+          <div className="stat-counter">
+            <p className="stat-value">{tryonsCount.toLocaleString()}<span className="stat-suffix">+</span></p>
+            <p className="stat-label">Try-Ons Generated</p>
+          </div>
+          {/* VITON-HD accuracy */}
+          <div className="stat-counter">
+            <p className="stat-value">{vitonAcc}<span className="stat-suffix">%</span></p>
+            <p className="stat-label">VITON-HD Accuracy</p>
+            <div className="acc-bar-bg">
+              <div className="acc-bar-fill" style={{ width: countersVisible ? `${vitonAcc}%` : '0%' }} />
+            </div>
+          </div>
+          {/* KNN accuracy */}
+          <div className="stat-counter">
+            <p className="stat-value">{knnAcc}<span className="stat-suffix">%</span></p>
+            <p className="stat-label">KNN Accuracy</p>
+            <div className="acc-bar-bg">
+              <div className="acc-bar-fill" style={{ width: countersVisible ? `${knnAcc}%` : '0%' }} />
+            </div>
           </div>
         </div>
       </section>
@@ -483,332 +289,46 @@ const HomePage: React.FC = () => {
   );
 };
 
-/* ─── Styles ─────────────────────────────────────────────────────────── */
+/* ─── Styles ─────────────────────────────────────────────────── */
 
-const wrapperStyle: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  background: '#fff',
-  color: '#1a1a1a',
-  overflowX: 'hidden',
-};
+const wrapperStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-serif", background:'#fff', color:'#1a1a1a', overflowX:'hidden' };
 
-const headerStyle: React.CSSProperties = {
-  position: 'fixed',
-  top: 0,
-  left: 0,
-  right: 0,
-  zIndex: 100,
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  padding: '28px 48px',
-  background: 'transparent',
-  pointerEvents: 'none',
-};
+const headerStyle: React.CSSProperties = { position:'fixed', top:0, left:0, right:0, zIndex:100, display:'flex', justifyContent:'space-between', alignItems:'center', padding:'28px 48px', background:'transparent', pointerEvents:'none' };
+const centerNavStyle: React.CSSProperties = { display:'flex', alignItems:'center', gap:'32px', pointerEvents:'auto' };
+const headerButtonsRowStyle: React.CSSProperties = { display:'flex', alignItems:'center', gap:'12px', pointerEvents:'auto' };
+const logoStyle: React.CSSProperties = { fontFamily:"'Cormorant Garamond',serif", fontSize:'32px', fontWeight:300, letterSpacing:'8px', color:'#fff', textTransform:'uppercase', margin:0, pointerEvents:'auto', textShadow:'0 2px 8px rgba(0,0,0,0.3)' };
 
-const centerNavStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '32px',
-  pointerEvents: 'auto',
-};
+const heroSectionStyle: React.CSSProperties = { position:'relative', minHeight:'100vh', display:'flex', flexDirection:'column', justifyContent:'center', overflow:'hidden', background:'linear-gradient(160deg,#2c2416 0%,#3d3022 30%,#1a1a1a 70%,#0f0f0f 100%)' };
+const heroVideoStyle: React.CSSProperties = { position:'absolute', inset:0, width:'100%', height:'100%', objectFit:'cover', objectPosition:'center', zIndex:0, pointerEvents:'none' };
+const heroOverlayStyle: React.CSSProperties = { position:'absolute', inset:0, background:'rgba(15,12,8,0.55)', zIndex:1, pointerEvents:'none' };
+const heroGradientStyle: React.CSSProperties = { position:'absolute', inset:0, background:'linear-gradient(to bottom,rgba(0,0,0,0.2) 0%,transparent 40%,rgba(0,0,0,0.6) 100%)', zIndex:2, pointerEvents:'none' };
+const heroContentStyle: React.CSSProperties = { position:'relative', zIndex:3, padding:'0 48px', maxWidth:'900px' };
+const heroTitleStyle: React.CSSProperties = { fontFamily:"'Cormorant Garamond',serif", fontSize:'clamp(72px,12vw,140px)', fontWeight:300, lineHeight:0.9, color:'#fff', letterSpacing:'-2px', marginBottom:'40px' };
+const heroSubContainerStyle: React.CSSProperties = { maxWidth:'420px', marginBottom:'48px' };
+const heroSubtitleStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-serif", fontSize:'13px', fontWeight:300, lineHeight:1.9, color:'rgba(255,255,255,0.65)', letterSpacing:'0.5px' };
+const heroCTAStyle: React.CSSProperties = { display:'flex', gap:'16px', flexWrap:'wrap' };
+const heroCornerStyle: React.CSSProperties = { position:'absolute', bottom:'32px', right:'48px', zIndex:3 };
+const heroCornerTextStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-serif", fontSize:'10px', fontWeight:400, letterSpacing:'2.5px', textTransform:'uppercase', color:'rgba(255,255,255,0.4)' };
 
-const headerButtonsRowStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'center',
-  gap: '12px',
-  pointerEvents: 'auto',
-};
+const marqueeStyle: React.CSSProperties = { background:'#c9a96e', overflow:'hidden', padding:'14px 0' };
+const marqueeTextStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-serif", fontSize:'10px', fontWeight:500, letterSpacing:'3px', textTransform:'uppercase', color:'#fff', display:'inline-block' };
 
-const logoStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: '32px',
-  fontWeight: 300,
-  letterSpacing: '8px',
-  color: '#fff',
-  textTransform: 'uppercase',
-  margin: 0,
-  pointerEvents: 'auto',
-  textShadow: '0 2px 8px rgba(0,0,0,0.3)',
-};
+/* best sellers */
+const bsSectionStyle: React.CSSProperties = { padding:'80px 48px', background:'#fafaf8', borderTop:'1px solid #e8e4de' };
+const bsHeaderStyle: React.CSSProperties = { marginBottom:'48px', display:'flex', flexDirection:'column', gap:'8px' };
+const bsOverlineStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-serif", fontSize:'10px', fontWeight:500, letterSpacing:'3px', textTransform:'uppercase', color:'#c9a96e' };
+const bsTitleStyle: React.CSSProperties = { fontFamily:"'Cormorant Garamond',serif", fontSize:'clamp(32px,5vw,52px)', fontWeight:300, lineHeight:1.2, color:'#1a1a1a' };
+const bsGridStyle: React.CSSProperties = { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'24px' };
+const bsCardBodyStyle: React.CSSProperties = { padding:'20px 16px 24px' };
+const bsCategoryStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-serif", fontSize:'9px', fontWeight:500, letterSpacing:'2.5px', textTransform:'uppercase', color:'#c9a96e', marginBottom:'6px' };
+const bsNameStyle: React.CSSProperties = { fontFamily:"'Cormorant Garamond',serif", fontSize:'18px', fontWeight:400, color:'#1a1a1a', marginBottom:'8px', lineHeight:1.2 };
+const bsPriceStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-serif", fontSize:'12px', fontWeight:400, color:'#6b6560' };
 
-const heroSectionStyle: React.CSSProperties = {
-  position: 'relative',
-  minHeight: '100vh',
-  display: 'flex',
-  flexDirection: 'column',
-  justifyContent: 'center',
-  overflow: 'hidden',
-  background: 'linear-gradient(160deg, #2c2416 0%, #3d3022 30%, #1a1a1a 70%, #0f0f0f 100%)',
-};
-
-const heroVideoStyle: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  width: '100%',
-  height: '100%',
-  objectFit: 'cover',
-  objectPosition: 'center',
-  zIndex: 0,
-  pointerEvents: 'none',
-};
-
-const heroOverlayStyle: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  backgroundImage: `
-    radial-gradient(ellipse at 70% 40%, rgba(201,169,110,0.12) 0%, transparent 60%),
-    radial-gradient(ellipse at 20% 80%, rgba(100,80,40,0.2) 0%, transparent 50%)
-  `,
-  background: 'rgba(15, 12, 8, 0.55)',
-  zIndex: 1,
-  pointerEvents: 'none',
-};
-
-const heroGradientStyle: React.CSSProperties = {
-  position: 'absolute',
-  inset: 0,
-  background: 'linear-gradient(to bottom, rgba(0,0,0,0.2) 0%, transparent 40%, rgba(0,0,0,0.6) 100%)',
-  zIndex: 2,
-  pointerEvents: 'none',
-};
-
-
-const heroContentStyle: React.CSSProperties = {
-  position: 'relative',
-  zIndex: 3,
-  padding: '0 48px',
-  maxWidth: '900px',
-};
-
-const heroTitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: 'clamp(72px, 12vw, 140px)',
-  fontWeight: 300,
-  lineHeight: 0.9,
-  color: '#fff',
-  letterSpacing: '-2px',
-  marginBottom: '40px',
-};
-
-const heroSubContainerStyle: React.CSSProperties = {
-  maxWidth: '420px',
-  marginBottom: '48px',
-};
-
-const heroSubtitleStyle: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '13px',
-  fontWeight: 300,
-  lineHeight: 1.9,
-  color: 'rgba(255,255,255,0.65)',
-  letterSpacing: '0.5px',
-};
-
-const heroCTAStyle: React.CSSProperties = {
-  display: 'flex',
-  gap: '16px',
-  flexWrap: 'wrap',
-};
-
-const heroCornerStyle: React.CSSProperties = {
-  position: 'absolute',
-  bottom: '32px',
-  right: '48px',
-  zIndex: 3,
-};
-
-const heroCornerTextStyle: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '10px',
-  fontWeight: 400,
-  letterSpacing: '2.5px',
-  textTransform: 'uppercase',
-  color: 'rgba(255,255,255,0.4)',
-};
-
-const marqueeStyle: React.CSSProperties = {
-  background: '#c9a96e',
-  overflow: 'hidden',
-  padding: '14px 0',
-};
-
-const marqueeTextStyle: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '10px',
-  fontWeight: 500,
-  letterSpacing: '3px',
-  textTransform: 'uppercase',
-  color: '#fff',
-  display: 'inline-block',
-  paddingRight: '0',
-};
-
-const aboutStripStyle: React.CSSProperties = {
-  display: 'flex',
-  alignItems: 'flex-end',
-  justifyContent: 'space-between',
-  gap: '40px',
-  padding: '72px 48px',
-  borderBottom: '1px solid #e8e4de',
-  flexWrap: 'wrap',
-};
-
-const aboutInnerStyle: React.CSSProperties = {
-  maxWidth: '600px',
-};
-
-const aboutOverlineStyle: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '10px',
-  fontWeight: 500,
-  letterSpacing: '3px',
-  textTransform: 'uppercase',
-  color: '#c9a96e',
-  marginBottom: '20px',
-};
-
-const aboutTextStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: 'clamp(22px, 3vw, 30px)',
-  fontWeight: 300,
-  lineHeight: 1.6,
-  color: '#1a1a1a',
-};
-
-const featuresSectionStyle: React.CSSProperties = {
-  padding: '80px 48px',
-  background: '#fff',
-};
-
-const featuresHeaderStyle: React.CSSProperties = {
-  marginBottom: '56px',
-};
-
-const featuresOverlineStyle: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '10px',
-  fontWeight: 500,
-  letterSpacing: '3px',
-  textTransform: 'uppercase',
-  color: '#c9a96e',
-  marginBottom: '16px',
-};
-
-const featuresTitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: 'clamp(32px, 5vw, 52px)',
-  fontWeight: 300,
-  lineHeight: 1.2,
-  color: '#1a1a1a',
-};
-
-const featuresGridStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-  gap: '1px',
-  background: '#e8e4de',
-  border: '1px solid #e8e4de',
-};
-
-const featureCardStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-};
-
-const featureIconStyle: React.CSSProperties = {
-  fontSize: '28px',
-};
-
-const featureNumStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: '13px',
-  fontWeight: 400,
-  letterSpacing: '2px',
-  color: '#c9a96e',
-  marginBottom: '12px',
-};
-
-const featureTitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: '26px',
-  fontWeight: 400,
-  color: '#1a1a1a',
-  marginBottom: '16px',
-  lineHeight: 1.2,
-};
-
-const featureDescStyle: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '12px',
-  fontWeight: 300,
-  lineHeight: 1.9,
-  color: '#6b6560',
-  flex: 1,
-};
-
-const statsSectionStyle: React.CSSProperties = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
-  background: '#1a1a1a',
-};
-
-const statItemStyle: React.CSSProperties = {
-  padding: '48px 36px',
-};
-
-const statValueStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: '28px',
-  fontWeight: 300,
-  color: '#c9a96e',
-  marginBottom: '8px',
-  letterSpacing: '1px',
-};
-
-const statLabelStyle: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '10px',
-  fontWeight: 400,
-  letterSpacing: '2.5px',
-  textTransform: 'uppercase',
-  color: 'rgba(255,255,255,0.4)',
-};
-
-const finalCTAStyle: React.CSSProperties = {
-  padding: '120px 48px',
-  background: '#fafaf8',
-  borderTop: '1px solid #e8e4de',
-};
-
-const finalCTAInnerStyle: React.CSSProperties = {
-  maxWidth: '640px',
-};
-
-const finalCTAOverlineStyle: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '10px',
-  fontWeight: 500,
-  letterSpacing: '3px',
-  textTransform: 'uppercase',
-  color: '#c9a96e',
-  marginBottom: '24px',
-};
-
-const finalCTATitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: 'clamp(36px, 5vw, 56px)',
-  fontWeight: 300,
-  lineHeight: 1.2,
-  color: '#1a1a1a',
-  marginBottom: '48px',
-};
-
-const finalCTAButtonsStyle: React.CSSProperties = {
-  display: 'flex',
-  gap: '16px',
-  flexWrap: 'wrap',
-};
-
+/* stats */
+const statsSectionStyle: React.CSSProperties = { background:'#1a1a1a', padding:'0 48px 72px' };
+const statsInnerStyle: React.CSSProperties = { paddingTop:'72px', marginBottom:'16px' };
+const statsOverlineStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-serif", fontSize:'10px', fontWeight:500, letterSpacing:'3px', textTransform:'uppercase', color:'#c9a96e', marginBottom:'16px' };
+const statsTitleStyle: React.CSSProperties = { fontFamily:"'Cormorant Garamond',serif", fontSize:'clamp(32px,5vw,52px)', fontWeight:300, lineHeight:1.2, color:'#fff' };
+const statsGridStyle: React.CSSProperties = { display:'grid', gridTemplateColumns:'repeat(4,1fr)', marginTop:'48px' };
 
 export default HomePage;
