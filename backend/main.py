@@ -39,8 +39,15 @@ VITON_ROOT = BASE_DIR / "viton-hd"
 DATASET_DIR = VITON_ROOT / "datasets"
 DATASET_TEST_DIR = DATASET_DIR / "test"
 RESULT_DIR = VITON_ROOT / "results"
-_VITON_PYTHON = VITON_ROOT / "viton-env" / "Scripts" / "python.exe"
-PYTHON_EXE = str(_VITON_PYTHON) if _VITON_PYTHON.exists() else sys.executable
+# Support both Windows (Scripts/python.exe) and Linux (bin/python) venv layouts
+_VITON_PYTHON_WIN = VITON_ROOT / "viton-env" / "Scripts" / "python.exe"
+_VITON_PYTHON_LIN = VITON_ROOT / "viton-env" / "bin" / "python"
+if _VITON_PYTHON_WIN.exists():
+    PYTHON_EXE = str(_VITON_PYTHON_WIN)
+elif _VITON_PYTHON_LIN.exists():
+    PYTHON_EXE = str(_VITON_PYTHON_LIN)
+else:
+    PYTHON_EXE = sys.executable
 print(f"[OK] VITON Python: {PYTHON_EXE}")
 
 print("\n" + "="*60)
