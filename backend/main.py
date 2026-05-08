@@ -39,7 +39,9 @@ VITON_ROOT = BASE_DIR / "viton-hd"
 DATASET_DIR = VITON_ROOT / "datasets"
 DATASET_TEST_DIR = DATASET_DIR / "test"
 RESULT_DIR = VITON_ROOT / "results"
-PYTHON_EXE = sys.executable
+_VITON_PYTHON = VITON_ROOT / "viton-env" / "Scripts" / "python.exe"
+PYTHON_EXE = str(_VITON_PYTHON) if _VITON_PYTHON.exists() else sys.executable
+print(f"[OK] VITON Python: {PYTHON_EXE}")
 
 print("\n" + "="*60)
 print("VITON-HD Backend Starting")
@@ -631,7 +633,9 @@ async def run_tryon(person_name: str = Query(...)):
         result = subprocess.run(cmd, cwd=str(VITON_ROOT), capture_output=True, text=True, timeout=300)
         if pairs_file.exists(): pairs_file.unlink()
         
-        if result.returncode != 0: raise HTTPException(status_code=500, detail="VITON-HD failed.")
+        if result.returncode != 0:
+            error_detail = (result.stderr or result.stdout or "VITON-HD failed with no output.")[-2000:]
+            raise HTTPException(status_code=500, detail=error_detail)
         
         result_dir = RESULT_DIR / job_name
         result_image = None
@@ -689,39 +693,148 @@ async def upload_product_image(file: UploadFile = File(...)):
 # so the recommendation engine matches them correctly.
 SAMPLE_PRODUCTS = [
     # ── TOPS ──────────────────────────────────────────────────
-    {"name": "Classic White T-Shirt",       "price": 29.99,  "category": "tops",      "description": "Premium cotton tee with a relaxed modern fit.",         "sizes": ["XS","S","M","L","XL"],    "colors": ["white","black","gray"],            "stock": 50},
-    {"name": "Navy Essential Tee",           "price": 32.99,  "category": "tops",      "description": "Soft everyday tee in wardrobe-staple navy.",            "sizes": ["XS","S","M","L","XL"],    "colors": ["navy","white","gray"],             "stock": 45},
-    {"name": "Emerald Silk Blouse",          "price": 74.99,  "category": "tops",      "description": "Flowing silk blouse in rich jewel-toned emerald.",      "sizes": ["XS","S","M","L"],         "colors": ["emerald","teal"],                  "stock": 20},
-    {"name": "Burgundy Velvet Top",          "price": 64.99,  "category": "tops",      "description": "Luxurious velvet top with a deep burgundy hue.",        "sizes": ["XS","S","M","L","XL"],    "colors": ["burgundy","ruby"],                 "stock": 25},
-    {"name": "Camel Knit Sweater",           "price": 89.99,  "category": "tops",      "description": "Cosy cable-knit sweater in warm camel tones.",          "sizes": ["S","M","L","XL"],         "colors": ["camel","beige","cream"],           "stock": 30},
-    {"name": "Lavender Puff-Sleeve Top",     "price": 54.99,  "category": "tops",      "description": "Romantic puff-sleeve blouse in soft lavender.",         "sizes": ["XS","S","M","L"],         "colors": ["lavender","blush"],                "stock": 28},
-    {"name": "Coral Off-Shoulder Top",       "price": 44.99,  "category": "tops",      "description": "Breezy off-shoulder top in vibrant coral.",             "sizes": ["XS","S","M","L","XL"],    "colors": ["coral","peach"],                   "stock": 35},
-    {"name": "Olive Linen Shirt",            "price": 59.99,  "category": "tops",      "description": "Relaxed linen shirt perfect for warm weather.",         "sizes": ["S","M","L","XL","XXL"],   "colors": ["olive","mustard"],                 "stock": 40},
-    {"name": "Terracotta Ruched Blouse",     "price": 49.99,  "category": "tops",      "description": "Flattering ruched detail in earthy terracotta.",        "sizes": ["XS","S","M","L","XL"],    "colors": ["terracotta","rust"],               "stock": 22},
-    {"name": "Fuchsia Statement Top",        "price": 39.99,  "category": "tops",      "description": "Bold fuchsia top that stands out in any crowd.",        "sizes": ["XS","S","M","L","XL"],    "colors": ["fuchsia","pink"],                  "stock": 30},
-    # ── BOTTOMS ───────────────────────────────────────────────
-    {"name": "Slim Black Jeans",             "price": 79.99,  "category": "bottoms",   "description": "Classic slim-fit jeans in versatile black.",            "sizes": ["28","30","32","34","36"], "colors": ["black","charcoal"],                "stock": 50},
-    {"name": "Navy Wide-Leg Trousers",       "price": 84.99,  "category": "bottoms",   "description": "Elevated wide-leg trousers in deep navy.",              "sizes": ["XS","S","M","L","XL"],    "colors": ["navy","cobalt"],                   "stock": 25},
-    {"name": "Camel Wide-Leg Pants",         "price": 89.99,  "category": "bottoms",   "description": "Flowy wide-leg pants in a timeless camel shade.",       "sizes": ["XS","S","M","L","XL"],    "colors": ["camel","beige"],                   "stock": 20},
-    {"name": "Olive Cargo Trousers",         "price": 74.99,  "category": "bottoms",   "description": "Functional cargo trousers in utility olive.",           "sizes": ["S","M","L","XL","XXL"],   "colors": ["olive","brown"],                   "stock": 35},
-    {"name": "Lavender Midi Skirt",          "price": 59.99,  "category": "bottoms",   "description": "Flowy midi skirt in dreamy muted lavender.",            "sizes": ["XS","S","M","L"],         "colors": ["lavender","lilac"],                "stock": 25},
-    {"name": "Red Mini Skirt",               "price": 44.99,  "category": "bottoms",   "description": "Daring mini skirt in classic bold red.",               "sizes": ["XS","S","M","L"],         "colors": ["red","orange"],                    "stock": 20},
-    {"name": "Ivory Linen Shorts",           "price": 39.99,  "category": "bottoms",   "description": "Lightweight linen shorts for casual summer days.",      "sizes": ["XS","S","M","L","XL"],    "colors": ["ivory","beige"],                   "stock": 40},
-    # ── DRESSES ───────────────────────────────────────────────
-    {"name": "Floral Summer Dress",          "price": 69.99,  "category": "dresses",   "description": "Lightweight floral print dress in soft blush tones.",   "sizes": ["XS","S","M","L"],         "colors": ["blush","rose","mint"],             "stock": 30},
-    {"name": "Navy Wrap Dress",              "price": 94.99,  "category": "dresses",   "description": "Chic wrap dress in timeless deep navy.",               "sizes": ["XS","S","M","L","XL"],    "colors": ["navy","cobalt"],                   "stock": 22},
-    {"name": "Emerald Midi Dress",           "price": 109.99, "category": "dresses",   "description": "Elegant midi dress in rich emerald green.",             "sizes": ["XS","S","M","L"],         "colors": ["emerald","teal"],                  "stock": 18},
-    {"name": "Camel Slip Dress",             "price": 79.99,  "category": "dresses",   "description": "Minimalist slip dress in a warm camel tone.",           "sizes": ["XS","S","M","L"],         "colors": ["camel","beige","ivory"],           "stock": 20},
-    {"name": "Blush Maxi Dress",             "price": 119.99, "category": "dresses",   "description": "Dreamy maxi dress in romantic blush and rose.",         "sizes": ["XS","S","M","L","XL"],    "colors": ["blush","rose","peach"],            "stock": 15},
-    {"name": "Terracotta Sundress",          "price": 64.99,  "category": "dresses",   "description": "Easy-wear sundress in warm earthy terracotta.",         "sizes": ["XS","S","M","L","XL"],    "colors": ["terracotta","rust","mustard"],     "stock": 25},
-    {"name": "Yellow Shift Dress",           "price": 54.99,  "category": "dresses",   "description": "Eye-catching shift dress in vibrant yellow.",           "sizes": ["XS","S","M","L"],         "colors": ["yellow","lime"],                   "stock": 20},
-    {"name": "Burgundy Evening Gown",        "price": 159.99, "category": "dresses",   "description": "Sophisticated evening gown in deep ruby burgundy.",     "sizes": ["XS","S","M","L"],         "colors": ["burgundy","ruby","purple"],        "stock": 10},
-    # ── OUTERWEAR ─────────────────────────────────────────────
-    {"name": "Blue Denim Jacket",            "price": 89.99,  "category": "outerwear", "description": "Classic denim jacket in versatile navy wash.",          "sizes": ["S","M","L","XL"],         "colors": ["navy","cobalt"],                   "stock": 30},
-    {"name": "Camel Trench Coat",            "price": 189.99, "category": "outerwear", "description": "Timeless trench coat in classic camel beige.",          "sizes": ["S","M","L","XL"],         "colors": ["camel","beige","brown"],           "stock": 15},
-    {"name": "Burgundy Blazer",              "price": 129.99, "category": "outerwear", "description": "Sharp tailored blazer in rich burgundy.",               "sizes": ["XS","S","M","L","XL"],    "colors": ["burgundy","ruby"],                 "stock": 18},
-    {"name": "Olive Utility Jacket",         "price": 109.99, "category": "outerwear", "description": "Practical utility jacket in deep olive green.",         "sizes": ["S","M","L","XL","XXL"],   "colors": ["olive","brown"],                   "stock": 25},
-    {"name": "Sky Blue Windbreaker",         "price": 84.99,  "category": "outerwear", "description": "Lightweight windbreaker in fresh sky blue.",            "sizes": ["S","M","L","XL"],         "colors": ["sky","mint"],                      "stock": 20},
+    {
+        "name": "Classic White T-Shirt", "price": 2500, "category": "tops",
+        "description": "Premium cotton t-shirt with a modern fit. A versatile everyday essential crafted from soft, breathable cotton fabric.",
+        "image_url": "http://localhost:8000/static/products/white-tshirt.jpg",
+        "sizes": ["S","M","L","XL"], "colors": ["white","black","gray"], "stock": 11,
+        "size_stock": {"S":3,"M":4,"L":3,"XL":1},
+    },
+    {
+        "name": "Calvin Klein Monologo Long Sleeve Slim Tee", "price": 16500, "category": "tops",
+        "description": "A classic, versatile essential crafted from soft cotton jersey. This long-sleeve tee features a slim-fit silhouette with a ribbed crew neckline and the iconic Calvin Klein 'CK' monologo printed in contrasting red on the chest. Perfect for layering or as a clean, standalone piece for casual wear.",
+        "image_url": "http://localhost:8000/static/products/97e9d8a5a18642c6b16e85a20e3c0229.png",
+        "image_gallery": ["http://localhost:8000/static/products/97e9d8a5a18642c6b16e85a20e3c0229.png","http://localhost:8000/static/products/a2aadf7fdb2c4c9b89cfd2eb7707e00d.jpg","http://localhost:8000/static/products/4e8e43ea2da74595a1bb3b7d0f0f6b79.png"],
+        "sizes": ["XS","S","M","L"], "colors": ["black","gray","white"], "stock": 3,
+        "size_stock": {"XS":1,"S":1,"M":1,"L":0},
+        "color_images": {"black":"http://localhost:8000/static/products/97e9d8a5a18642c6b16e85a20e3c0229.png","gray":"http://localhost:8000/static/products/a2aadf7fdb2c4c9b89cfd2eb7707e00d.jpg","white":"http://localhost:8000/static/products/4e8e43ea2da74595a1bb3b7d0f0f6b79.png"},
+    },
+    {
+        "name": "L'Elegance Lace-Inlay Ribbed Mock-Neck Top", "price": 11500, "category": "tops",
+        "description": "Achieve sophisticated allure in this beautiful ribbed-knit top. It features a fitted, long-sleeve silhouette with a dramatic V-shaped inlay of delicate, complex black lace across the décolletage, leading up to a matching high-lace mock-neck collar. A perfect choice for evening wear layered under a blazer, or paired with a sleek skirt.",
+        "image_url": "http://localhost:8000/static/products/2730fdc2a261489d9671cc96e125dfb8.jpg",
+        "sizes": ["XS","S","M","L"], "colors": ["black"], "stock": 5,
+        "size_stock": {"XS":1,"S":2,"M":1,"L":1},
+    },
+    {
+        "name": "Fila Tricolor Sport Logo Tee", "price": 5000, "category": "tops",
+        "description": "A classic sporty-casual tee with a bold colour block design. This short-sleeve shirt features a clean tricolor pattern with a red upper panel, a white central band, and a navy blue lower body. A prominent dark navy Fila logo is printed across the white chest band.",
+        "image_url": "http://localhost:8000/static/products/b3c5de9cac6a4956b0273265c73700f5.jpg",
+        "sizes": ["XS"], "colors": ["red"], "stock": 0,
+        "size_stock": {"XS":0},
+    },
+    {
+        "name": "Ruched Off-The-Shoulder Wrap Top", "price": 6000, "category": "tops",
+        "description": "A chic, sophisticated off-the-shoulder top in a rich terracotta hue. This blouse features intricate ruching across the bodice, creating a flattering, feminine silhouette. Made from a comfortable stretch-jersey fabric, it has a wide V-neckline that can be worn on or off the shoulders.",
+        "image_url": "http://localhost:8000/static/products/e5440a7b717e4a10948536cc94b5b66f.jpg",
+        "sizes": ["S","M","L"], "colors": ["terracotta"], "stock": 0,
+        "size_stock": {"S":0,"M":0,"L":0},
+    },
+    {
+        "name": "Multi-Pattern Floral Halter Top", "price": 3500, "category": "tops",
+        "description": "A vibrant and stylish halter-neck top featuring a sophisticated blend of patterns. The top is designed with distinct horizontal bands: a dark navy band with small white floral sprigs at the top, followed by a band with dense white and blue flowers, and a large centre border separating the sections.",
+        "image_url": "http://localhost:8000/static/products/04ca0a0ca91d4fc4b1e9d34782b3c65a.jpg",
+        "sizes": ["S","M","L"], "colors": ["navy"], "stock": 4,
+        "size_stock": {"S":2,"M":1,"L":1},
+    },
+    {
+        "name": "GAP Classic Arch Logo T-Shirt", "price": 3000, "category": "tops",
+        "description": "A definitive wardrobe essential. This short-sleeve crewneck tee is crafted from soft, comfortable cotton jersey and features the iconic GAP arch logo printed in a bold, contrasting white across the chest. Designed with a standard fit for effortless everyday style.",
+        "image_url": "http://localhost:8000/static/products/4ccb4d441da946d5bc6e608b624c1964.jpg",
+        "sizes": ["S","M","L"], "colors": ["navy","white"], "stock": 4,
+        "size_stock": {"S":2,"M":1,"L":1},
+    },
+    {
+        "name": "Maison Scotch Voila Graphic T-Shirt", "price": 2900, "category": "tops",
+        "description": "Express yourself with this chic graphic tee from Maison Scotch. Made from soft white cotton, it features a bold four-line text graphic reading VOILÀ stacked repeatedly in red, bright orange and black. Below the main graphic, fine print reads 'GALERIE – LES FAUVES – PARIS and MAISON SCOTCH'.",
+        "image_url": "http://localhost:8000/static/products/d65669628a0445dfb3c421af6bce60b0.jpg",
+        "sizes": ["XS","S","M"], "colors": ["white"], "stock": 5,
+        "size_stock": {"XS":1,"S":2,"M":2},
+    },
+    {
+        "name": "Floral Long Sleeve Blouse", "price": 4500, "category": "tops",
+        "description": "Elevate your wardrobe with this effortlessly stylish blouse. This versatile top features a subtle round neckline with a charming, multi-coloured ditsy floral pattern in shades of red, purple and blue on a rich navy background with soft balloon sleeves.",
+        "image_url": "http://localhost:8000/static/products/424c3632ee044269b9cd0bc55ce071fb.jpg",
+        "sizes": ["S","M","L"], "colors": ["navy"], "stock": 4,
+        "size_stock": {"S":1,"M":2,"L":1},
+    },
+    {
+        "name": "Zizzi Olive Green V-Neck Sleeveless Blouse", "price": 7000, "category": "tops",
+        "description": "Elevate your everyday wardrobe with this elegant sleeveless blouse by Zizzi. Crafted from a lightweight, flowy fabric, this top features a flattering V-neckline with a sophisticated center front pleat detail. The rich olive green base is complemented by a subtle, all-over speckled pattern.",
+        "image_url": "http://localhost:8000/static/products/16e23d8b1a4f4be18e2b8c4fada81f6a.jpg",
+        "sizes": ["S","M","L"], "colors": ["olive"], "stock": 0,
+        "size_stock": {"S":0,"M":0,"L":0},
+    },
+    {
+        "name": "Heather Grey Paisley Motif Graphic T-Shirt", "price": 4500, "category": "tops",
+        "description": "Add a touch of bohemian flair to your casual wardrobe with this relaxed-fit graphic t-shirt. Crafted from soft heather grey cotton blend, this tee features a classic crew neckline and comfortable drop-shoulder sleeves. The front showcases a large, intricate symmetrical paisley and floral motif print.",
+        "image_url": "http://localhost:8000/static/products/aa1d563b88ab47b0a91a0efdead5f270.jpg",
+        "sizes": ["S","M","L"], "colors": ["gray"], "stock": 0,
+        "size_stock": {"S":0,"M":0,"L":0},
+    },
+    {
+        "name": "Teal Green Maternity Tie-Front Top", "price": 5500, "category": "tops",
+        "description": "Designed to flatter your growing bump, this comfortable and stylish maternity top is crafted from a soft, stretch-jersey fabric. It features a classic round neckline with a subtle keyhole detail and long sleeves. The elegant empire-waist design includes an adjustable side tie.",
+        "image_url": "http://localhost:8000/static/products/307a613641ed4d1f841e3015e09571a4.jpg",
+        "sizes": ["S","M","L"], "colors": ["teal"], "stock": 3,
+        "size_stock": {"S":1,"M":1,"L":1},
+    },
+    {
+        "name": "Sienna Lace-Trim Ribbed Mock Neck Top", "price": 4850, "category": "tops",
+        "description": "Elevate your essentials with this sophisticated long-sleeve top. Crafted from a soft, form-fitting ribbed knit, it features delicate floral lace detailing along the mock neckline, hem, and cuffs for a romantic, feminine touch. Perfect for layering under a blazer or wearing as a standout piece for an evening out.",
+        "image_url": "http://localhost:8000/static/products/b4fd381fd51a44aa85967d0f760cd08b.jpg",
+        "sizes": ["S","M","L"], "colors": ["terracotta","rust"], "stock": 8,
+        "size_stock": {"S":3,"M":3,"L":2},
+    },
+    {
+        "name": "Lavender Smocked Ruffle Yoke Blouse", "price": 5200, "category": "tops",
+        "description": "A dreamy, ethereal addition to any wardrobe, this blouse features intricate smocking across the yoke and delicate ruffle trim for a vintage-inspired aesthetic. The lightweight, fluid fabric creates a relaxed silhouette with elegant pleated detailing and cuffed balloon sleeves.",
+        "image_url": "http://localhost:8000/static/products/4f3ed740e19540109c22b3e6107f96b3.jpg",
+        "sizes": ["S","M","L"], "colors": ["lavender"], "stock": 19,
+        "size_stock": {"S":7,"M":7,"L":5},
+    },
+    {
+        "name": "Scallop Edge Cami Top - Coffee", "price": 2150, "category": "tops",
+        "description": "Elevate your basics with this chic Cami Top in a rich, warm coffee brown. Featuring a fitted, cropped silhouette and delicate spaghetti straps, it is defined by a charming scalloped edge along the V-neckline. Made from soft, breathable cotton-blend fabric.",
+        "image_url": "http://localhost:8000/static/products/1b5394d84b9543419fa6f369f3be6c95.png",
+        "sizes": ["S","M","L"], "colors": ["brown"], "stock": 10,
+        "size_stock": {"S":4,"M":4,"L":2},
+    },
+    {
+        "name": "Bright Orange Oversized Tee with Subtly Embossed Logo", "price": 2500, "category": "tops",
+        "description": "Elevate your casual style with this vibrant, eye-catching oversized t-shirt. Crafted from a soft, breathable cotton blend, the slightly dropped shoulders and relaxed fit provide a modern and laid-back silhouette. Features a subtle tonal embossed 'EVERYTHING' text on the left chest.",
+        "image_url": "http://localhost:8000/static/products/059f63fa8a784dcfb7fd4a4a5e575551.jpg",
+        "sizes": ["S","M","L"], "colors": ["orange"], "stock": 7,
+        "size_stock": {"S":3,"M":2,"L":2},
+    },
+    {
+        "name": "Hot Pink Mock Neck Lettuce Edge Ribbed Top", "price": 2250, "category": "tops",
+        "description": "Elevate your everyday basics with this vibrant, hot pink long-sleeved top. It features a soft, stretch ribbed-knit texture for a comfortable, figure-hugging fit with charming lettuce-edge trims on the neck, cuffs, and hem, adding a feminine touch to the minimalist design.",
+        "image_url": "http://localhost:8000/static/products/9831e7c0cc654614b8e062f478ae2e0b.jpg",
+        "sizes": ["S","M","L"], "colors": ["fuchsia"], "stock": 6,
+        "size_stock": {"S":2,"M":2,"L":2},
+    },
+    {
+        "name": "Sun-Kissed Yellow Deep V Halter Bodysuit", "price": 4750, "category": "tops",
+        "description": "Elevate your everyday basics with this vibrant, sun-kissed yellow deep V halter bodysuit. Combining a plunging deep V-neckline with a fluid, draped silhouette, it is crafted from a soft, matte stretch fabric for a supportive and form-fitting construction with a snap-button closure at the crotch.",
+        "image_url": "http://localhost:8000/static/products/143ae595bf7f4b4f8b5c074ac7034d42.jpg",
+        "sizes": ["S","M","L"], "colors": ["yellow"], "stock": 6,
+        "size_stock": {"S":2,"M":2,"L":2},
+    },
+    {
+        "name": "Sunny Skies Off-The-Shoulder Crop Top", "price": 2650, "category": "tops",
+        "description": "This charming light yellow crop top is the perfect piece for sunny days and warm evenings. Crafted from a lightweight, breathable cotton fabric, it features a classic off-the-shoulder neckline adorned with delicate ruffles and long, balloon sleeves gathered at the cuffs.",
+        "image_url": "http://localhost:8000/static/products/9fee61bb109a458ab1d47d6adf176315.jpg",
+        "sizes": ["S","M","L"], "colors": ["yellow"], "stock": 0,
+        "size_stock": {"S":0,"M":0,"L":0},
+    },
+    {
+        "name": "Lime Green Sleeveless V-Neck Step-Hem Blouse", "price": 5000, "category": "tops",
+        "description": "Elevate your summer style with this eye-catching lime green sleeveless blouse. Crafted from a soft, breathable fabric blend, it features a modern high neckline that flows into a flattering V-neck with a clean flat-pocket detail and a step-hem design for effortless style.",
+        "image_url": "http://localhost:8000/static/products/56c2547600f54d5596a3767fd3c67d60.png",
+        "sizes": ["S","M","L"], "colors": ["lime"], "stock": 5,
+        "size_stock": {"S":2,"M":2,"L":1},
+    },
 ]
 db.seed_products_if_empty(SAMPLE_PRODUCTS)
 

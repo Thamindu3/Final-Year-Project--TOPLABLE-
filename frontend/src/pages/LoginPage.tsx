@@ -36,6 +36,11 @@ const LoginPage: React.FC = () => {
   const [adminEmail,    setAdminEmail]    = useState('');
   const [adminPassword, setAdminPassword] = useState('');
 
+  const [showPassword,      setShowPassword]      = useState(false);
+  const [showCPassword,     setShowCPassword]     = useState(false);
+  const [showCConfirm,      setShowCConfirm]      = useState(false);
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
+
   const [msg, setMsg] = useState<string | null>(null);
 
   // ── Sign In handler ─────────────────────────────────────────
@@ -251,14 +256,19 @@ const LoginPage: React.FC = () => {
 
               <div style={fieldStyle}>
                 <label style={labelStyle}>PASSWORD *</label>
-                <input
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  type="password"
-                  autoComplete="current-password"
-                  style={inputStyle}
-                  placeholder=""
-                />
+                <div style={pwWrapStyle}>
+                  <input
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    type={showPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    style={pwInputStyle}
+                    placeholder=""
+                  />
+                  <button type="button" style={eyeBtnStyle} onClick={() => setShowPassword(v => !v)} tabIndex={-1}>
+                    <EyeIcon open={showPassword} />
+                  </button>
+                </div>
               </div>
 
               <div style={metaRowStyle}>
@@ -321,24 +331,34 @@ const LoginPage: React.FC = () => {
 
               <div style={fieldStyle}>
                 <label style={labelStyle}>PASSWORD *</label>
-                <input
-                  value={cPassword}
-                  onChange={(e) => setCPassword(e.target.value)}
-                  type="password"
-                  autoComplete="new-password"
-                  style={inputStyle}
-                />
+                <div style={pwWrapStyle}>
+                  <input
+                    value={cPassword}
+                    onChange={(e) => setCPassword(e.target.value)}
+                    type={showCPassword ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    style={pwInputStyle}
+                  />
+                  <button type="button" style={eyeBtnStyle} onClick={() => setShowCPassword(v => !v)} tabIndex={-1}>
+                    <EyeIcon open={showCPassword} />
+                  </button>
+                </div>
               </div>
 
               <div style={fieldStyle}>
                 <label style={labelStyle}>RE-ENTER PASSWORD *</label>
-                <input
-                  value={cConfirm}
-                  onChange={(e) => setCConfirm(e.target.value)}
-                  type="password"
-                  autoComplete="new-password"
-                  style={inputStyle}
-                />
+                <div style={pwWrapStyle}>
+                  <input
+                    value={cConfirm}
+                    onChange={(e) => setCConfirm(e.target.value)}
+                    type={showCConfirm ? 'text' : 'password'}
+                    autoComplete="new-password"
+                    style={pwInputStyle}
+                  />
+                  <button type="button" style={eyeBtnStyle} onClick={() => setShowCConfirm(v => !v)} tabIndex={-1}>
+                    <EyeIcon open={showCConfirm} />
+                  </button>
+                </div>
               </div>
 
               <div style={fieldStyle}>
@@ -537,13 +557,18 @@ const LoginPage: React.FC = () => {
 
               <div style={fieldStyle}>
                 <label style={labelStyle}>ADMIN PASSWORD *</label>
-                <input
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  type="password"
-                  autoComplete="current-password"
-                  style={inputStyle}
-                />
+                <div style={pwWrapStyle}>
+                  <input
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    type={showAdminPassword ? 'text' : 'password'}
+                    autoComplete="current-password"
+                    style={pwInputStyle}
+                  />
+                  <button type="button" style={eyeBtnStyle} onClick={() => setShowAdminPassword(v => !v)} tabIndex={-1}>
+                    <EyeIcon open={showAdminPassword} />
+                  </button>
+                </div>
               </div>
 
               <p style={adminHintStyle}>
@@ -1059,6 +1084,43 @@ const bpSkinHintStyle: React.CSSProperties = {
   fontSize: '10px',
   fontWeight: 300,
   color: '#6b6560',
+};
+
+const EyeIcon: React.FC<{ open: boolean }> = ({ open }) =>
+  open ? (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  ) : (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+  );
+
+const pwWrapStyle: React.CSSProperties = {
+  position: 'relative',
+  display: 'flex',
+  alignItems: 'center',
+};
+const pwInputStyle: React.CSSProperties = {
+  ...inputStyle,
+  paddingRight: '48px',
+};
+const eyeBtnStyle: React.CSSProperties = {
+  position: 'absolute',
+  right: '14px',
+  background: 'none',
+  border: 'none',
+  cursor: 'pointer',
+  padding: '4px',
+  color: '#9a9590',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  lineHeight: 0,
 };
 
 export default LoginPage;
