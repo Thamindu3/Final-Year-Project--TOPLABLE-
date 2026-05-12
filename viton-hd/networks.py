@@ -481,7 +481,9 @@ class ALIASGenerator(BaseNetwork):
 
         self.conv_img = nn.Conv2d(nf, 3, kernel_size=3, padding=1)
 
-        self.up = nn.Upsample(scale_factor=2, mode='nearest')
+        up_mode = 'bilinear' if getattr(opt, 'use_bilinear', False) else 'nearest'
+        up_kwargs = {'align_corners': False} if up_mode == 'bilinear' else {}
+        self.up = nn.Upsample(scale_factor=2, mode=up_mode, **up_kwargs)
         self.relu = nn.LeakyReLU(0.2)
         self.tanh = nn.Tanh()
 

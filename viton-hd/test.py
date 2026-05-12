@@ -11,10 +11,7 @@ from networks import SegGenerator, GMM, ALIASGenerator
 from utils import gen_noise, load_checkpoint, save_images
 
 
-# ✅ device MUST be after torch import
-import os
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-device = torch.device("cpu")
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def get_opt():
@@ -47,6 +44,15 @@ def get_opt():
     parser.add_argument('--norm_G', type=str, default='spectralaliasinstance')
     parser.add_argument('--ngf', type=int, default=64)
     parser.add_argument('--num_upsampling_layers', default='most')
+
+    # Accuracy improvement flags
+    parser.add_argument('--sharpen', type=float, default=0.0,
+                        help='Post-processing sharpening strength. 0=off, 1.0=medium, 2.0=strong. '
+                             'NOTE: sharpening improves subjective visual quality but hurts SSIM/PSNR '
+                             'by amplifying pixel-level differences from ground truth.')
+    parser.add_argument('--bilinear', action='store_true',
+                        help='Use bilinear upsampling in ALIASGenerator (smoother edges). '
+                             'Test both modes — results vary per checkpoint.')
 
     return parser.parse_args()
 
@@ -134,13 +140,15 @@ def test(opt, seg, gmm, alias):
                 for i, c in zip(img_names, c_names)
             ]
 
-            save_images(output, names, os.path.join(opt.save_dir, opt.name))
+            save_images(output, names, os.path.join(opt.save_dir, opt.name),
+                        sharpen=opt.sharpen)
             print(f"step: {i + 1}")
 
 
 def main():
     opt = get_opt()
     print(opt)
+    print(f"  Device: {device}")
 
     os.makedirs(os.path.join(opt.save_dir, opt.name), exist_ok=True)
 
@@ -148,6 +156,7 @@ def main():
     gmm = GMM(opt, 7, 3).to(device).eval()
 
     opt.semantic_nc = 7
+    opt.use_bilinear = opt.bilinear
     alias = ALIASGenerator(opt, 9).to(device).eval()
     opt.semantic_nc = 13
 
