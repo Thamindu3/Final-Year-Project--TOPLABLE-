@@ -46,18 +46,24 @@ The prototype delivers:
 - Upload a person photo and select any product garment
 - Full preprocessing pipeline: pose estimation → human parsing → torso erasure → cloth masking
 - VITON-HD three-stage inference: segmentation generation → geometric matching → image synthesis
-- Post-processing: colour correction, neck skin restoration, edge smoothing
+- Post-processing: colour correction, neck skin restoration, edge smoothing, optional unsharp masking
+- **GPU auto-detection** — runs on CUDA GPU when available, falls back to CPU automatically
+- `--sharpen` flag for post-processing unsharp masking; `--bilinear` flag for smoother upsampling
+- Try-on results are saved to history (per-user) with unique cloth snapshots per session
+- Delete individual try-on history entries from the profile page
 
 ### AI Recommendations
 - **Body-Type Engine**: Input height, weight, gender, skin tone → get predicted style profile + colour palette + size recommendation + 8 matching products
 - **KNN Engine**: Select any product → get top-k similar products by category, colour, price, and size using cosine similarity
+- **Best Sellers**: Home page shows top 4 products ranked by real sales data, linked to product pages
 
 ### E-Commerce
-- User registration and login with password hashing
+- User registration and login with password hashing; change password from profile
 - Product catalogue with category filtering, search, and grid/list view
-- Product detail page with image gallery, size/colour selection
-- Shopping cart and order placement
+- Product detail page with image gallery, size/colour selection + direct try-on shortcut
+- Shopping cart and order placement with itemised confirmation screen
 - Admin dashboard: manage products, users, and view all orders/try-on results
+- Live platform stats (animated counters): user count, try-on count, model accuracy scores
 
 ---
 
@@ -186,11 +192,12 @@ VITON-UNIFIED/
 │   └── temp/                          # Temporary processing files
 │
 ├── viton-hd/                          # VITON-HD inference module
-│   ├── test.py                        # Main inference script (SegGen + GMM + ALIAS)
+│   ├── test.py                        # Main inference script (SegGen + GMM + ALIAS); --sharpen, --bilinear flags
+│   ├── train.py                       # Full 3-stage training pipeline (grid_size=7, VGG + GAN loss)
 │   ├── networks.py                    # SegGenerator, GMM, ALIASGenerator definitions
 │   ├── datasets.py                    # VITON-HD data loader
 │   ├── evaluate_metrics.py            # SSIM, PSNR, LPIPS, FID evaluation
-│   ├── utils.py                       # Thin-plate spline, grid utilities
+│   ├── utils.py                       # Thin-plate spline, grid utilities, apply_sharpen()
 │   ├── checkpoints/
 │   │   ├── seg_final.pth              # SegGenerator pre-trained weights
 │   │   ├── gmm_final.pth              # GMM pre-trained weights
@@ -206,7 +213,8 @@ VITON-UNIFIED/
 │   │   ├── image-parse-agnostic-v3.2/ # Upper-body-erased label maps
 │   │   └── agnostic-v3.2/             # Torso-erased person images
 │   ├── results/                       # Final synthesised try-on images
-│   └── evaluation_results/            # Quality metric reports
+│   ├── evaluation_results/            # Quality metric reports (standard)
+│   └── evaluation_results_sharp/     # Quality metric reports (with --sharpen post-processing)
 │
 ├── run_training_and_eval.bat          # One-click: train models + evaluate VITON-HD
 ├── .gitattributes                     # Git LFS config for .pkl, .pth, .h5 files
@@ -272,13 +280,27 @@ Three neural networks run in sequence:
 
 #### Stage 3 — Post-Processing (backend/main.py)
 
-Three corrections are applied to the raw VITON-HD output:
+Four corrections are applied to the raw VITON-HD output:
 
 | Correction | Method | Problem Solved |
 |---|---|---|
 | Colour correction | Per-channel mean scaling (clipped 0.45–1.0) with soft mask blend | Washed-out / faded garment colour |
 | Neck restoration | Blend original neck skin from person image using Gaussian mask | Dark collar artefacts |
 | Edge smoothing | Garment boundary dilation + Gaussian blur (65% blend) | Jagged synthesis boundaries |
+| Sharpening (optional) | PIL UnsharpMask via `apply_sharpen()` — enabled with `--sharpen` flag | Soft / blurry output details |
+
+**GPU support**: `test.py` now auto-detects a CUDA GPU and falls back to CPU. Pass `--bilinear` to use bilinear upsampling in ALIASGenerator for smoother results.
+
+#### VITON-HD Training Pipeline (viton-hd/train.py)
+
+A full 3-stage training script was added with the following improvements over the original paper's defaults:
+
+| Component | Change | Benefit |
+|---|---|---|
+| TPS grid | `grid_size=7` (49 control points) vs original 25 | Finer cloth warping |
+| GMM resolution | 288×384 (vs 256×192) | More accurate geometric matching |
+| ALIAS loss | VGG perceptual loss + GAN adversarial loss | More photorealistic synthesis |
+| Device | Auto CUDA / CPU | Runs on GPU without manual edits |
 
 ---
 
@@ -434,9 +456,10 @@ Base URL: `http://localhost:8000`
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/recommendations?product_id={id}&top_k={k}` | KNN similar products |
-| GET | `/api/recommendations/popular?top_k={k}` | Popular products by category |
+| GET | `/api/recommendations/popular?top_k={k}` | Popular products ranked by real sales data |
 | POST | `/api/recommend/by-body` | Body profile → ML outfit recommendations |
 | GET | `/api/recommend/model-status` | Check if ML models are loaded |
+| GET | `/api/recommend/model-metrics` | Return live model accuracy from training_report.json |
 
 **Body recommendation request body:**
 ```json
@@ -455,12 +478,26 @@ Base URL: `http://localhost:8000`
 | GET | `/api/user/{user_id}/orders` | Get a user's order history |
 | GET | `/api/admin/orders` | Get all orders (admin) |
 
+### Try-On History
+| Method | Endpoint | Description |
+|---|---|---|
+| POST | `/api/tryon/save` | Save a try-on result to user history |
+| GET | `/api/tryon/history/{user_id}` | Get a user's saved try-on history |
+| DELETE | `/api/tryon/{result_id}` | Delete a try-on history entry |
+
+### Platform Stats
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/public/stats` | Live counters: users, try-ons, model accuracy |
+| GET | `/api/admin/stats` | Admin dashboard statistics |
+
 ### User Profile
 | Method | Endpoint | Description |
 |---|---|---|
 | GET | `/api/user/{user_id}/profile` | Get user profile + body measurements |
 | PUT | `/api/user/{user_id}/profile` | Update personal information |
 | PUT | `/api/user/{user_id}/body-profile` | Update body measurements |
+| POST | `/api/user/{user_id}/change-password` | Change account password |
 
 ### Admin
 | Method | Endpoint | Description |
@@ -497,11 +534,11 @@ name                                      result_id (PK)
 created_at         UserBodyProfile        user_id_fk
                    ───────────────────    product_id_fk
 ProductViews       profile_id (PK)        person_image_path
-────────────────   user_id_fk (UNIQUE)    output_image_path
-view_id (PK)       height                 status
-user_id_fk         weight                 error_message
-product_id_fk      gender                 created_at
-viewed_at          skin_tone
+────────────────   user_id_fk (UNIQUE)    cloth_image_path
+view_id (PK)       height                 output_image_path
+user_id_fk         weight                 status
+product_id_fk      gender                 error_message
+viewed_at          skin_tone              created_at
                    body_type
                    chest / waist / hips
                    preferred_style
@@ -587,13 +624,21 @@ Training takes approximately **3–5 minutes** on CPU for both models.
 
 1. Navigate to `http://localhost:3000/virtual-tryon`
 2. Upload a **full-body person photo** (good lighting, simple background, front-facing)
-3. Select or upload a **garment image**
+3. Select or upload a **garment image** (or select a product and it auto-loads)
 4. Click **Generate Try-On**
 5. Wait 30–90 seconds (CPU) or 5–15 seconds (GPU) for the result
+
+The backend auto-detects a CUDA GPU — no manual config needed. Optional inference flags (passed when invoking `test.py` directly):
+
+```bash
+python test.py --sharpen       # Apply unsharp masking to the output
+python test.py --bilinear      # Use bilinear upsampling in ALIASGenerator
+```
 
 **For best results:**
 - Person photo: good lighting, full body visible, simple background, front-facing
 - Garment image: white or plain background, clear product shot
+- Logged-in users: results are automatically saved to Try-On History in the profile page
 
 ---
 
@@ -656,12 +701,15 @@ The pre-trained VITON-HD checkpoints (`seg_final.pth`, `gmm_final.pth`, `alias_f
 
 | Page | Description |
 |---|---|
-| Homepage | "Wear it before you buy it" hero with feature sections |
-| Products Page | Grid catalogue with category filters and search |
-| Virtual Try-On | Two-panel upload interface with result display |
-| Body Recommend | Measurement form with style + colour palette output |
+| Homepage | Hero section + Best Sellers carousel + animated platform stats (users, try-ons, accuracy) |
+| Products Page | Grid catalogue with category filters, search, and Best Selling sort |
+| Virtual Try-On | Two-panel upload interface with result display + auto-load from Product Detail |
+| Try-On History | Profile tab showing saved results with model/cloth thumbnails and delete option |
+| Body Recommend | Measurement form with style + colour palette output + 8 matching products |
 | Login / Register | Sign in and account creation with validation |
-| Admin Dashboard | Product management, user list, order overview |
+| User Profile | Personal info, body measurements, try-on history, change password |
+| Order Confirmed | Itemised confirmation showing order ID, products, and cost breakdown |
+| Admin Dashboard | Product management, user list, order overview, platform stats |
 
 ---
 
