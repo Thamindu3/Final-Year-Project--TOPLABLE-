@@ -267,6 +267,24 @@ const ProductDetailPage: React.FC = () => {
         setTryOnPersonUrl(`${API_BASE}${resp.data.person_url}`);
         setTryOnClothUrl(`${API_BASE}${resp.data.cloth_url}`);
         setTryOnProgress('Complete!');
+
+        // Save to try-on history if user is logged in
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          try {
+            const u = JSON.parse(storedUser);
+            const userId = u?.user_id ?? u?.userId ?? u?.id;
+            if (userId) {
+              await axios.post(`${API_BASE}/api/tryon/save`, {
+                user_id: userId,
+                output_image_path: resp.data.view_url,
+                person_image_path: resp.data.person_url,
+                cloth_image_path: resp.data.cloth_url,
+                product_id: product.product_id ?? product.id ?? null,
+              });
+            }
+          } catch (_) {}
+        }
       } else { throw new Error(resp.data.error || 'Inference failed'); }
     } catch (err: any) {
       let msg = 'Failed to generate try-on. ';
@@ -863,7 +881,7 @@ const categoryBadgeStyle: React.CSSProperties = { position: 'absolute', top: '24
 
 const infoSideStyle: React.CSSProperties = { padding: '56px 56px 80px', overflowY: 'auto' };
 const overlineStyle: React.CSSProperties = { fontFamily: "'Montserrat',sans-serif", fontSize: '10px', fontWeight: 500, letterSpacing: '3px', textTransform: 'uppercase', color: '#c9a96e', marginBottom: '12px' };
-const productNameStyle: React.CSSProperties = { fontFamily: "'Cormorant Garamond',serif", fontSize: 'clamp(32px,4vw,52px)', fontWeight: 300, color: '#1a1a1a', lineHeight: 1.05, marginBottom: '14px' };
+const productNameStyle: React.CSSProperties = { fontFamily: "'Oswald',sans-serif", fontSize: 'clamp(26px,3vw,42px)', fontWeight: 700, letterSpacing: '1.5px', textTransform: 'uppercase', color: '#1a1a1a', lineHeight: 1.1, marginBottom: '14px' };
 const priceStyle: React.CSSProperties = { fontFamily: "'Montserrat',sans-serif", fontSize: '18px', fontWeight: 500, color: '#c9a96e', marginBottom: '28px' };
 const dividerStyle: React.CSSProperties = { height: '1px', background: '#e8e4de', margin: '24px 0' };
 
@@ -895,7 +913,7 @@ const toOverlayStyle: React.CSSProperties = { position: 'fixed', inset: 0, backg
 const toModalStyle: React.CSSProperties = { background: '#fff', width: '100%', maxWidth: '860px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' };
 const toHeaderStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '32px 36px 24px', borderBottom: '1px solid #e8e4de' };
 const toOverlineStyle: React.CSSProperties = { fontFamily: "'Montserrat',sans-serif", fontSize: '9px', fontWeight: 500, letterSpacing: '3px', textTransform: 'uppercase', color: '#c9a96e', marginBottom: '6px' };
-const toTitleStyle: React.CSSProperties = { fontFamily: "'Cormorant Garamond',serif", fontSize: '30px', fontWeight: 300, color: '#1a1a1a' };
+const toTitleStyle: React.CSSProperties = { fontFamily: "'Oswald',sans-serif", fontSize: '24px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', color: '#1a1a1a' };
 const toCloseBtnStyle: React.CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', fontSize: '18px', color: '#9a9590', lineHeight: 1, padding: '4px 8px' };
 const toDividerStyle: React.CSSProperties = { height: '1px', background: '#e8e4de', margin: '0 36px' };
 

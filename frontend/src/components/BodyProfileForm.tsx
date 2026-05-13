@@ -166,7 +166,7 @@ const BodyProfileForm: React.FC = () => {
       {/* ── PAGE HEADER ───────────────────────────────────────── */}
       <header style={s.hero}>
         <span style={s.overline}>Personalised AI Styling</span>
-        <h1 style={s.heroTitle}>Body Fit <em>Recommendations</em></h1>
+        <h1 style={s.heroTitle}>Body Fit Recommendations</h1>
         <p style={s.heroSub}>
           Our AI matches your body profile to the most flattering styles and
           colours from our collection — automatically.
@@ -489,7 +489,7 @@ const BodyProfileForm: React.FC = () => {
 
 /* ─── CSS ─────────────────────────────────────────────────────── */
 const css = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Montserrat:wght@300;400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;700&family=Oswald:wght@500;600;700&display=swap');
   * { margin:0; padding:0; box-sizing:border-box; }
 
   .bp-slider {
@@ -537,7 +537,7 @@ const s: Record<string, React.CSSProperties> = {
   // Hero
   hero:        { padding:"72px 56px 48px", background:"linear-gradient(135deg,#fafaf8 0%,#f0ede8 100%)", borderBottom:"1px solid #e8e4de" },
   overline:    { fontFamily:"'Montserrat',sans-serif", fontSize:"10px", fontWeight:500, letterSpacing:"3px", textTransform:"uppercase", color:"#c9a96e", marginBottom:"12px", display:"block" },
-  heroTitle:   { fontFamily:"'Cormorant Garamond',serif", fontSize:"clamp(36px,5vw,64px)", fontWeight:300, lineHeight:1, color:"#1a1a1a", marginBottom:"16px" },
+  heroTitle:   { fontFamily:"'Oswald',sans-serif", fontSize:"clamp(30px,4vw,52px)", fontWeight:700, letterSpacing:"2px", textTransform:"uppercase", lineHeight:1.05, color:"#1a1a1a", marginBottom:"16px" },
   heroSub:     { fontFamily:"'Montserrat',sans-serif", fontSize:"13px", fontWeight:300, lineHeight:1.9, color:"#6b6560", maxWidth:"560px" },
   divider:     { height:"1px", background:"#e8e4de" },
 
@@ -550,7 +550,7 @@ const s: Record<string, React.CSSProperties> = {
   statsGrid:   { display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:"20px", marginBottom:"32px" },
   statCard:    { padding:"20px 22px", background:"#fff", border:"1px solid #e8e4de", display:"flex", flexDirection:"column", gap:"6px" },
   statLabel:   { fontFamily:"'Montserrat',sans-serif", fontSize:"9px", fontWeight:500, letterSpacing:"2px", textTransform:"uppercase", color:"#9a9590" },
-  statValue:   { fontFamily:"'Cormorant Garamond',serif", fontSize:"24px", fontWeight:400, color:"#1a1a1a", lineHeight:1.2 },
+  statValue:   { fontFamily:"'Oswald',sans-serif", fontSize:"22px", fontWeight:600, letterSpacing:"1px", color:"#1a1a1a", lineHeight:1.2 },
   statSub:     { fontFamily:"'Montserrat',sans-serif", fontSize:"10px", fontWeight:300, color:"#c9a96e" },
 
   palettesRow: { display:"flex", flexWrap:"wrap", gap:"32px", borderTop:"1px solid #e8e4de", paddingTop:"24px" },
@@ -564,7 +564,7 @@ const s: Record<string, React.CSSProperties> = {
   // Form section
   formSection: { padding:"40px 56px", borderBottom:"1px solid #e8e4de", background:"#fff" },
   formIntro:   { marginBottom:"28px", padding:"20px 24px", background:"#fafaf8", border:"1px solid #e8e4de" },
-  formIntroTitle: { fontFamily:"'Cormorant Garamond',serif", fontSize:"20px", fontWeight:400, color:"#1a1a1a", marginBottom:"6px" },
+  formIntroTitle: { fontFamily:"'Oswald',sans-serif", fontSize:"18px", fontWeight:600, letterSpacing:"1.5px", textTransform:"uppercase", color:"#1a1a1a", marginBottom:"6px" },
   formIntroSub:   { fontFamily:"'Montserrat',sans-serif", fontSize:"12px", fontWeight:300, color:"#6b6560", lineHeight:1.7 },
   form:        { display:"flex", flexDirection:"column", gap:"0" },
   formGrid:    { display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))", gap:"28px 40px", marginBottom:"28px" },
@@ -574,20 +574,20 @@ const s: Record<string, React.CSSProperties> = {
   genderBtn:   { padding:"13px", background:"#fff", border:"1px solid #d4cfc8", fontFamily:"'Montserrat',sans-serif", fontSize:"12px", fontWeight:400, letterSpacing:"1px", color:"#6b6560", cursor:"pointer", transition:"all 0.25s ease" },
   genderActive:{ background:"#1a1a1a", borderColor:"#1a1a1a", color:"#fff" },
   sliderHead:  { display:"flex", justifyContent:"space-between", alignItems:"center" },
-  sliderVal:   { fontFamily:"'Cormorant Garamond',serif", fontSize:"24px", fontWeight:400, color:"#c9a96e" },
+  sliderVal:   { fontFamily:"'Oswald',sans-serif", fontSize:"22px", fontWeight:600, color:"#c9a96e" },
   sliderBase:  { width:"100%" },
   marks:       { display:"flex", justifyContent:"space-between" },
   markTxt:     { fontFamily:"'Montserrat',sans-serif", fontSize:"10px", fontWeight:300, color:"#9a9590" },
   bmiBox:      { display:"flex", alignItems:"center", gap:"12px", padding:"14px 18px", background:"#fafaf8", border:"1px solid #e8e4de" },
   bmiLabel:    { fontFamily:"'Montserrat',sans-serif", fontSize:"10px", fontWeight:500, letterSpacing:"2px", textTransform:"uppercase", color:"#9a9590" },
-  bmiVal:      { fontFamily:"'Cormorant Garamond',serif", fontSize:"28px", fontWeight:400, color:"#c9a96e" },
+  bmiVal:      { fontFamily:"'Oswald',sans-serif", fontSize:"26px", fontWeight:700, color:"#c9a96e" },
   bmiCat:      { fontFamily:"'Montserrat',sans-serif", fontSize:"12px", fontWeight:300, color:"#6b6560" },
   skinGrid:    { display:"flex", flexDirection:"column", gap:"6px" },
   skinBtn:     { display:"flex", alignItems:"center", gap:"14px", padding:"12px 14px", background:"#fff", border:"1px solid #d4cfc8", cursor:"pointer", textAlign:"left", transition:"all 0.25s ease" },
   skinActive:  { borderColor:"#c9a96e", background:"#fdf8f2" },
   skinSwatch:  { width:"28px", height:"28px", borderRadius:"50%", flexShrink:0, transition:"border 0.25s ease" },
   skinTxt:     { display:"flex", flexDirection:"column", gap:"2px" },
-  skinName:    { fontFamily:"'Cormorant Garamond',serif", fontSize:"18px", fontWeight:400, color:"#1a1a1a" },
+  skinName:    { fontFamily:"'Oswald',sans-serif", fontSize:"15px", fontWeight:600, letterSpacing:"1px", textTransform:"uppercase", color:"#1a1a1a" },
   skinHint:    { fontFamily:"'Montserrat',sans-serif", fontSize:"10px", fontWeight:300, color:"#6b6560", lineHeight:1.4 },
   errBox:      { display:"flex", alignItems:"flex-start", gap:"10px", padding:"14px 16px", background:"#fee", border:"1px solid #fcc", marginBottom:"20px" },
   errDot:      { width:"8px", height:"8px", borderRadius:"50%", background:"#c33", marginTop:"5px", flexShrink:0 },
@@ -606,7 +606,7 @@ const s: Record<string, React.CSSProperties> = {
   // Empty state
   emptyWrap:   { display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", padding:"80px 24px", gap:"12px" },
   emptyIcon:   { fontSize:"56px", color:"#d4cfc8" },
-  emptyTitle:  { fontFamily:"'Cormorant Garamond',serif", fontSize:"24px", fontWeight:300, color:"#6b6560" },
+  emptyTitle:  { fontFamily:"'Oswald',sans-serif", fontSize:"20px", fontWeight:600, letterSpacing:"1.5px", textTransform:"uppercase", color:"#6b6560" },
   emptySub:    { fontFamily:"'Montserrat',sans-serif", fontSize:"12px", fontWeight:300, color:"#9a9590", lineHeight:1.8, textAlign:"center", maxWidth:"360px" },
   signInBtn:   { marginTop:"12px", padding:"14px 32px", background:"#1a1a1a", border:"none", color:"#fff", fontFamily:"'Montserrat',sans-serif", fontSize:"11px", fontWeight:500, letterSpacing:"3px", textTransform:"uppercase", cursor:"pointer", transition:"background 0.3s ease" },
 
@@ -618,13 +618,13 @@ const s: Record<string, React.CSSProperties> = {
   card:        { background:"#fff", position:"relative" },
   imgWrap:     { position:"relative", height:"260px", overflow:"hidden" },
   img:         { width:"100%", height:"100%", display:"flex", alignItems:"center", justifyContent:"center" },
-  imgInitial:  { fontFamily:"'Cormorant Garamond',serif", fontSize:"60px", fontWeight:300, color:"rgba(26,26,26,0.1)" },
+  imgInitial:  { fontFamily:"'Oswald',sans-serif", fontSize:"60px", fontWeight:700, color:"rgba(26,26,26,0.1)" },
   catBadge:    { position:"absolute", top:"12px", left:"12px", fontFamily:"'Montserrat',sans-serif", fontSize:"9px", fontWeight:500, letterSpacing:"2px", textTransform:"uppercase", color:"#fff", background:"rgba(26,26,26,0.72)", padding:"4px 10px" },
   matchBadge:  { position:"absolute", bottom:"12px", right:"12px", fontFamily:"'Montserrat',sans-serif", fontSize:"9px", fontWeight:500, color:"#fff", padding:"4px 10px" },
   overlay:     { position:"absolute", inset:0, background:"rgba(0,0,0,0.42)", display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center", gap:"10px" },
   ovBtn:       { padding:"10px 24px", background:"#fff", border:"none", fontFamily:"'Montserrat',sans-serif", fontSize:"10px", fontWeight:500, letterSpacing:"2px", textTransform:"uppercase", color:"#1a1a1a", cursor:"pointer", width:"160px", transition:"opacity 0.2s" },
   cardBody:    { padding:"18px", display:"flex", flexDirection:"column", gap:"6px" },
-  cardName:    { fontFamily:"'Cormorant Garamond',serif", fontSize:"18px", fontWeight:400, color:"#1a1a1a", lineHeight:1.2 },
+  cardName:    { fontFamily:"'Montserrat',sans-serif", fontSize:"13px", fontWeight:500, color:"#1a1a1a", lineHeight:1.3 },
   cardPrice:   { fontFamily:"'Montserrat',sans-serif", fontSize:"13px", fontWeight:500, color:"#c9a96e" },
   cardMatch:   { fontFamily:"'Montserrat',sans-serif", fontSize:"10px", fontWeight:300, color:"#9a9590", fontStyle:"italic", textTransform:"capitalize" },
   sizesRow:    { display:"flex", gap:"6px", flexWrap:"wrap", marginTop:"4px" },

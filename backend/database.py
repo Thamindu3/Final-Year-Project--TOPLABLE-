@@ -207,6 +207,25 @@ def login_user(email: str, password: str):
         return dict(row)
     return None
 
+def change_password(user_id: int, current_password: str, new_password: str) -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    current_hash = hash_password(current_password)
+    cursor.execute(
+        "SELECT user_id FROM Users WHERE user_id = ? AND password_hash = ?",
+        (user_id, current_hash)
+    )
+    if not cursor.fetchone():
+        conn.close()
+        return False
+    cursor.execute(
+        "UPDATE Users SET password_hash = ? WHERE user_id = ?",
+        (hash_password(new_password), user_id)
+    )
+    conn.commit()
+    conn.close()
+    return True
+
 def get_all_users():
     """Get all users (for admin panel)."""
     conn = get_connection()
@@ -263,6 +282,18 @@ def save_tryon_result(user_id: int, output_image_path: str,
     conn.close()
     return result_id
 
+def delete_tryon_result(result_id: int, user_id: int) -> bool:
+    conn = get_connection()
+    cursor = conn.cursor()
+    cursor.execute(
+        "DELETE FROM TryOnResults WHERE result_id = ? AND user_id = ?",
+        (result_id, user_id)
+    )
+    conn.commit()
+    deleted = cursor.rowcount > 0
+    conn.close()
+    return deleted
+
 def get_all_tryon_results():
     conn = get_connection()
     cursor = conn.cursor()
@@ -276,7 +307,14 @@ def get_all_tryon_results():
     """)
     rows = cursor.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    results = []
+    for row in rows:
+        r = dict(row)
+        cloth = r.get('cloth_image_path', '') or ''
+        if cloth.endswith('custom_cloth.jpg'):
+            r['cloth_image_path'] = ''
+        results.append(r)
+    return results
 
 def get_user_tryon_results(user_id: int):
     conn = get_connection()
@@ -285,7 +323,8 @@ def get_user_tryon_results(user_id: int):
         SELECT r.result_id, r.user_id, r.status,
                r.person_image_path, r.cloth_image_path,
                r.output_image_path, r.product_id, r.created_at,
-               p.name as product_name, p.category as product_category
+               p.name as product_name, p.category as product_category,
+               p.image_path as product_image_path
         FROM TryOnResults r
         LEFT JOIN Products p ON r.product_id = p.product_id
         WHERE r.user_id = ?
@@ -293,7 +332,24 @@ def get_user_tryon_results(user_id: int):
     """, (user_id,))
     rows = cursor.fetchall()
     conn.close()
-    return [dict(row) for row in rows]
+    results = []
+    for row in rows:
+        r = dict(row)
+        cloth = r.get('cloth_image_path', '') or ''
+        if cloth.endswith('custom_cloth.jpg') or not cloth:
+            # Fall back to the product image when we have one, otherwise blank.
+            product_img = r.get('product_image_path') or ''
+            if product_img:
+                # image_path is stored as a full URL; extract the relative portion
+                # e.g. "http://localhost:8000/static/products/xxx.png" → "/static/products/xxx.png"
+                from urllib.parse import urlparse
+                parsed = urlparse(product_img)
+                r['cloth_image_path'] = parsed.path  # e.g. "/static/products/xxx.png"
+            else:
+                r['cloth_image_path'] = ''
+        r.pop('product_image_path', None)  # don't expose internal field to frontend
+        results.append(r)
+    return results
 
 # ── PRODUCT FUNCTIONS ─────────────────────────────────────────
 

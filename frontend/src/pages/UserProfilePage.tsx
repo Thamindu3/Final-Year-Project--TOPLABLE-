@@ -80,6 +80,11 @@ const UserProfilePage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'tryon-history' | 'order-history' | 'settings'>('overview');
   const [editMode, setEditMode] = useState(false);
   const [editData, setEditData] = useState<Partial<UserData>>({});
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' });
+  const [pwError, setPwError] = useState('');
+  const [pwSuccess, setPwSuccess] = useState('');
+  const [pwLoading, setPwLoading] = useState(false);
 
   const navigate = useNavigate();
   const API_BASE_URL = 'http://localhost:8000';
@@ -164,6 +169,48 @@ const UserProfilePage: React.FC = () => {
     } finally {
       setTryOnLoading(false);
     }
+  };
+
+  const handleDeleteTryOn = async (resultId: number) => {
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) return;
+    const u = JSON.parse(storedUser);
+    const userId = u?.user_id ?? u?.userId ?? u?.id;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/tryon/${resultId}?user_id=${userId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setTryOnResults(prev => prev.filter(r => r.result_id !== resultId));
+      }
+    } catch (e) {
+      console.error('Failed to delete try-on:', e);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setPwError(''); setPwSuccess('');
+    if (!pwForm.current) { setPwError('Please enter your current password.'); return; }
+    if (pwForm.next.length < 6) { setPwError('New password must be at least 6 characters.'); return; }
+    if (pwForm.next !== pwForm.confirm) { setPwError('New passwords do not match.'); return; }
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) return;
+    const u = JSON.parse(storedUser);
+    setPwLoading(true);
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/user/${u.user_id}/change-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ current_password: pwForm.current, new_password: pwForm.next }),
+      });
+      if (res.ok) {
+        setPwSuccess('Password changed successfully.');
+        setPwForm({ current: '', next: '', confirm: '' });
+        setTimeout(() => { setPwSuccess(''); setShowPasswordForm(false); }, 2500);
+      } else {
+        const data = await res.json();
+        setPwError(data.detail || 'Failed to change password.');
+      }
+    } catch { setPwError('Network error. Please try again.'); }
+    finally { setPwLoading(false); }
   };
 
   const handleLogout = () => {
@@ -263,11 +310,7 @@ const UserProfilePage: React.FC = () => {
       <section style={heroSectionStyle}>
         <div style={heroInnerStyle}>
           <p style={heroOverlineStyle}>Your Account</p>
-          <h1 style={heroTitleStyle}>
-            Profile
-            <br />
-            <em>Settings</em>
-          </h1>
+          <h1 style={heroTitleStyle}>Profile Settings</h1>
           <p style={heroSubtitleStyle}>
             Manage your account information, view your try-on history, and customize your preferences
           </p>
@@ -369,11 +412,7 @@ const UserProfilePage: React.FC = () => {
               <div style={tabContentStyle}>
                 <div style={sectionHeaderStyle}>
                   <p style={sectionOverlineStyle}>Personal Information</p>
-                  <h2 style={sectionTitleStyle}>
-                    Your Profile
-                    <br />
-                    <em>Details</em>
-                  </h2>
+                  <h2 style={sectionTitleStyle}>Your Profile Details</h2>
                 </div>
 
                 {editMode ? (
@@ -593,7 +632,7 @@ const UserProfilePage: React.FC = () => {
                     {/* Body Profile */}
                     <div style={bodySectionHeaderStyle}>
                       <p style={sectionOverlineStyle}>For Recommendations</p>
-                      <h3 style={bodySectionTitleStyle}>Body <em>Profile</em></h3>
+                      <h3 style={bodySectionTitleStyle}>Body Profile</h3>
                     </div>
 
                     <div style={infoGridStyle}>
@@ -647,11 +686,7 @@ const UserProfilePage: React.FC = () => {
               <div style={tabContentStyle}>
                 <div style={sectionHeaderStyle}>
                   <p style={sectionOverlineStyle}>Your Activity</p>
-                  <h2 style={sectionTitleStyle}>
-                    Try-On
-                    <br />
-                    <em>History</em>
-                  </h2>
+                  <h2 style={sectionTitleStyle}>Try-On History</h2>
                 </div>
 
                 {tryOnLoading ? (
@@ -672,7 +707,19 @@ const UserProfilePage: React.FC = () => {
                 ) : (
                   <div style={historyGridStyle}>
                     {tryOnResults.map((result) => (
-                      <div key={result.result_id} style={historyCardStyle}>
+                      <div key={result.result_id} style={{ ...historyCardStyle, position: 'relative' }}
+                        className="tryon-history-card"
+                      >
+                        {/* Delete button */}
+                        <button
+                          onClick={() => handleDeleteTryOn(result.result_id)}
+                          style={deleteBtnStyle}
+                          title="Delete"
+                          className="tryon-delete-btn"
+                        >
+                          ✕
+                        </button>
+
                         {/* Result image (main) */}
                         <div style={historyImageStyle}>
                           {result.output_image_path ? (
@@ -737,7 +784,7 @@ const UserProfilePage: React.FC = () => {
               <div style={tabContentStyle}>
                 <div style={sectionHeaderStyle}>
                   <p style={sectionOverlineStyle}>Your Purchases</p>
-                  <h2 style={sectionTitleStyle}>Order<br /><em>History</em></h2>
+                  <h2 style={sectionTitleStyle}>Order History</h2>
                 </div>
 
                 {orders.length === 0 ? (
@@ -819,11 +866,7 @@ const UserProfilePage: React.FC = () => {
               <div style={tabContentStyle}>
                 <div style={sectionHeaderStyle}>
                   <p style={sectionOverlineStyle}>Preferences</p>
-                  <h2 style={sectionTitleStyle}>
-                    Account
-                    <br />
-                    <em>Settings</em>
-                  </h2>
+                  <h2 style={sectionTitleStyle}>Account Settings</h2>
                 </div>
 
                 {/* Email Notifications */}
@@ -857,8 +900,42 @@ const UserProfilePage: React.FC = () => {
                 {/* Privacy & Security */}
                 <div style={settingsSectionStyle}>
                   <h3 style={settingsTitleStyle}>Privacy & Security</h3>
-                  <button style={settingsActionBtnStyle}>Change Password</button>
-                  <button style={settingsActionBtnStyle}>Manage Two-Factor Authentication</button>
+
+                  {/* Change Password toggle */}
+                  <button
+                    style={settingsActionBtnStyle}
+                    onClick={() => { setShowPasswordForm(v => !v); setPwError(''); setPwSuccess(''); }}
+                  >
+                    {showPasswordForm ? 'Cancel' : 'Change Password'}
+                  </button>
+
+                  {showPasswordForm && (
+                    <div style={pwFormStyle}>
+                      {['current', 'next', 'confirm'].map((field, idx) => (
+                        <div key={field} style={{ marginBottom: '14px' }}>
+                          <label style={pwLabelStyle}>
+                            {idx === 0 ? 'Current Password' : idx === 1 ? 'New Password' : 'Confirm New Password'}
+                          </label>
+                          <input
+                            type="password"
+                            style={pwInputStyle}
+                            value={pwForm[field as keyof typeof pwForm]}
+                            onChange={e => setPwForm(f => ({ ...f, [field]: e.target.value }))}
+                            placeholder={idx === 0 ? 'Enter current password' : idx === 1 ? 'At least 6 characters' : 'Repeat new password'}
+                          />
+                        </div>
+                      ))}
+                      {pwError && <p style={{ color: '#e53935', fontFamily: "'Montserrat',sans-serif", fontSize: '12px', marginBottom: '12px' }}>{pwError}</p>}
+                      {pwSuccess && <p style={{ color: '#4caf50', fontFamily: "'Montserrat',sans-serif", fontSize: '12px', marginBottom: '12px' }}>{pwSuccess}</p>}
+                      <button
+                        style={{ ...pwSaveBtnStyle, opacity: pwLoading ? 0.6 : 1 }}
+                        onClick={handleChangePassword}
+                        disabled={pwLoading}
+                      >
+                        {pwLoading ? 'Saving…' : 'Save New Password'}
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Account Actions */}
@@ -891,7 +968,7 @@ const UserProfilePage: React.FC = () => {
 /* ─── STYLES ─────────────────────────────────────────────────────── */
 
 const fonts = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;700&family=Oswald:wght@500;600;700&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
 `;
 
@@ -982,9 +1059,11 @@ const errorOverlineStyle: React.CSSProperties = {
   marginBottom: '16px',
 };
 const errorTitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
+  fontFamily: "'Oswald', sans-serif",
   fontSize: '40px',
-  fontWeight: 300,
+  letterSpacing: '2px',
+  textTransform: 'uppercase' as const,
+  fontWeight: 700,
   color: '#1a1a1a',
   marginBottom: '16px',
 };
@@ -1055,10 +1134,12 @@ const heroOverlineStyle: React.CSSProperties = {
   marginBottom: '16px',
 };
 const heroTitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: 'clamp(48px, 8vw, 72px)',
-  fontWeight: 300,
-  lineHeight: 0.95,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: 'clamp(40px, 6vw, 62px)',
+  fontWeight: 700,
+  lineHeight: 1.0,
+  letterSpacing: '2px',
+  textTransform: 'uppercase',
   color: '#1a1a1a',
   marginBottom: '24px',
 };
@@ -1157,16 +1238,18 @@ const avatarImgStyle: React.CSSProperties = {
 };
 
 const avatarInitialStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
+  fontFamily: "'Oswald', sans-serif",
   fontSize: '48px',
-  fontWeight: 300,
+  fontWeight: 700,
   color: '#fff',
 };
 
 const profileNameStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: '28px',
-  fontWeight: 400,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: '26px',
+  fontWeight: 600,
+  letterSpacing: '1.5px',
+  textTransform: 'uppercase' as const,
   color: '#1a1a1a',
   textAlign: 'center',
   lineHeight: 1.2,
@@ -1196,9 +1279,9 @@ const statItemStyle: React.CSSProperties = {
 };
 
 const statValueStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
+  fontFamily: "'Oswald', sans-serif",
   fontSize: '20px',
-  fontWeight: 400,
+  fontWeight: 600,
   color: '#c9a96e',
 };
 
@@ -1269,9 +1352,11 @@ const tabsRowStyle: React.CSSProperties = {
 };
 
 const tabBtnStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: '24px',
-  fontWeight: 300,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: '18px',
+  fontWeight: 600,
+  letterSpacing: '1.5px',
+  textTransform: 'uppercase' as const,
   background: 'transparent',
   border: 'none',
   cursor: 'pointer',
@@ -1301,9 +1386,11 @@ const bodySectionHeaderStyle: React.CSSProperties = {
   marginBottom: '24px',
 };
 const bodySectionTitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: 'clamp(24px, 4vw, 32px)',
-  fontWeight: 300,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: 'clamp(20px, 3vw, 26px)',
+  fontWeight: 700,
+  letterSpacing: '2px',
+  textTransform: 'uppercase' as const,
   lineHeight: 1.1,
   color: '#1a1a1a',
 };
@@ -1319,10 +1406,12 @@ const sectionOverlineStyle: React.CSSProperties = {
 };
 
 const sectionTitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: 'clamp(32px, 5vw, 48px)',
-  fontWeight: 300,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: 'clamp(26px, 4vw, 40px)',
+  fontWeight: 700,
   lineHeight: 1.1,
+  letterSpacing: '2px',
+  textTransform: 'uppercase',
   color: '#1a1a1a',
 };
 
@@ -1491,6 +1580,28 @@ const historyCardStyle: React.CSSProperties = {
   cursor: 'pointer',
 };
 
+const deleteBtnStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: '8px',
+  right: '8px',
+  zIndex: 10,
+  width: '28px',
+  height: '28px',
+  borderRadius: '50%',
+  border: 'none',
+  background: 'rgba(0,0,0,0.55)',
+  color: '#fff',
+  fontSize: '13px',
+  lineHeight: '28px',
+  textAlign: 'center',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 0,
+  transition: 'background 0.2s',
+};
+
 const historyImageStyle: React.CSSProperties = {
   width: '100%',
   height: '280px',
@@ -1555,9 +1666,11 @@ const emptyIconStyle: React.CSSProperties = {
 };
 
 const emptyTitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: '32px',
-  fontWeight: 300,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: '28px',
+  fontWeight: 700,
+  letterSpacing: '2px',
+  textTransform: 'uppercase' as const,
   color: '#1a1a1a',
   marginBottom: '12px',
 };
@@ -1606,9 +1719,11 @@ const settingsSectionStyle: React.CSSProperties = {
 };
 
 const settingsTitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: '24px',
-  fontWeight: 400,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: '20px',
+  fontWeight: 700,
+  letterSpacing: '2px',
+  textTransform: 'uppercase' as const,
   color: '#1a1a1a',
   marginBottom: '24px',
 };
@@ -1643,6 +1758,47 @@ const settingsLabelSubStyle: React.CSSProperties = {
 const checkboxStyle: React.CSSProperties = {
   width: '18px',
   height: '18px',
+  cursor: 'pointer',
+};
+
+const pwFormStyle: React.CSSProperties = {
+  background: '#fafaf8',
+  border: '1px solid #e8e4de',
+  padding: '24px',
+  marginTop: '4px',
+  marginBottom: '12px',
+};
+const pwLabelStyle: React.CSSProperties = {
+  display: 'block',
+  fontFamily: "'Montserrat',sans-serif",
+  fontSize: '9px',
+  fontWeight: 500,
+  letterSpacing: '2px',
+  textTransform: 'uppercase' as const,
+  color: '#6b6560',
+  marginBottom: '6px',
+};
+const pwInputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '11px 14px',
+  border: '1px solid #e8e4de',
+  fontFamily: "'Montserrat',sans-serif",
+  fontSize: '13px',
+  color: '#1a1a1a',
+  background: '#fff',
+  outline: 'none',
+};
+const pwSaveBtnStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '13px',
+  background: '#1a1a1a',
+  border: 'none',
+  color: '#fff',
+  fontFamily: "'Montserrat',sans-serif",
+  fontSize: '10px',
+  fontWeight: 500,
+  letterSpacing: '2.5px',
+  textTransform: 'uppercase' as const,
   cursor: 'pointer',
 };
 
@@ -1693,9 +1849,11 @@ const orderCardHeaderStyle: React.CSSProperties = {
   borderBottom: '1px solid #e8e4de',
 };
 const orderIdStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: '18px',
-  fontWeight: 400,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: '16px',
+  fontWeight: 600,
+  letterSpacing: '1px',
+  textTransform: 'uppercase' as const,
   color: '#1a1a1a',
   marginBottom: '4px',
 };
@@ -1719,9 +1877,9 @@ const orderStatusBadgeStyle: React.CSSProperties = {
   marginBottom: '6px',
 };
 const orderTotalStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
+  fontFamily: "'Oswald', sans-serif",
   fontSize: '20px',
-  fontWeight: 400,
+  fontWeight: 700,
   color: '#c9a96e',
 };
 const orderItemsStyle: React.CSSProperties = {
@@ -1743,9 +1901,10 @@ const orderItemThumbStyle: React.CSSProperties = {
   overflow: 'hidden',
 };
 const orderItemNameStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: '15px',
-  fontWeight: 400,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: '14px',
+  fontWeight: 600,
+  letterSpacing: '0.5px',
   color: '#1a1a1a',
   marginBottom: '3px',
 };
@@ -1855,9 +2014,9 @@ const profileSliderHeaderStyle: React.CSSProperties = {
   marginBottom: '2px',
 };
 const profileSliderValueStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
+  fontFamily: "'Oswald', sans-serif",
   fontSize: '22px',
-  fontWeight: 400,
+  fontWeight: 600,
   color: '#c9a96e',
 };
 const profileSliderMarksStyle: React.CSSProperties = {
@@ -1888,9 +2047,9 @@ const profileBmiLabelStyle: React.CSSProperties = {
   color: '#9a9590',
 };
 const profileBmiValueStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
+  fontFamily: "'Oswald', sans-serif",
   fontSize: '26px',
-  fontWeight: 400,
+  fontWeight: 700,
   color: '#c9a96e',
 };
 const profileBmiCatStyle: React.CSSProperties = {
@@ -1931,9 +2090,11 @@ const profileSkinTextStyle: React.CSSProperties = {
   textAlign: 'left' as const,
 };
 const profileSkinNameStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: '16px',
-  fontWeight: 400,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: '14px',
+  fontWeight: 600,
+  letterSpacing: '1px',
+  textTransform: 'uppercase' as const,
   color: '#1a1a1a',
 };
 const profileSkinHintStyle: React.CSSProperties = {

@@ -519,9 +519,7 @@ const ProductsPage: React.FC = () => {
       <header style={pageHeaderStyle}>
         <div style={pageHeaderInnerStyle}>
           <p style={pageOverlineStyle}>Our Collection</p>
-          <h1 style={pageTitleStyle}>
-            Product<br /><em>Catalogue</em>
-          </h1>
+          <h1 style={pageTitleStyle}>Product Catalogue</h1>
         </div>
         <button onClick={() => setShowCart(true)} style={cartIconBtnStyle} title="View Cart">
           <svg viewBox="0 0 24 24" fill="none" style={{ width: 20, height: 20 }} stroke="currentColor" strokeWidth={1.8}>
@@ -1490,7 +1488,7 @@ function catColor(cat: string) {
 /* ─── CSS ─────────────────────────────────────────────────────────────── */
 
 const fonts = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;700&family=Oswald:wght@500;600;700&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
 `;
 
@@ -1542,9 +1540,9 @@ const errorMsgStyle: React.CSSProperties = { fontFamily: "'Montserrat', sans-ser
 const retryBtnStyle: React.CSSProperties = { padding: '14px 40px', background: '#1a1a1a', color: '#fff', border: 'none', fontFamily: "'Montserrat', sans-serif", fontSize: '10px', fontWeight: 500, letterSpacing: '3px', textTransform: 'uppercase', cursor: 'pointer', transition: 'background 0.3s ease' };
 
 const pageHeaderStyle: React.CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', padding: '72px 48px 40px', flexWrap: 'wrap', gap: '20px' };
-const pageHeaderInnerStyle: React.CSSProperties = {};
+const pageHeaderInnerStyle: React.CSSProperties = { textAlign: 'center', flex: 1 };
 const pageOverlineStyle: React.CSSProperties = { fontFamily: "'Montserrat', sans-serif", fontSize: '10px', fontWeight: 500, letterSpacing: '3px', textTransform: 'uppercase', color: '#c9a96e', marginBottom: '12px' };
-const pageTitleStyle: React.CSSProperties = { fontFamily: "'Cormorant Garamond', serif", fontSize: 'clamp(40px, 6vw, 72px)', fontWeight: 300, lineHeight: 0.95, color: '#1a1a1a' };
+const pageTitleStyle: React.CSSProperties = { fontFamily: "'Oswald', sans-serif", fontSize: 'clamp(36px, 5.5vw, 68px)', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', lineHeight: 1.0, color: '#1a1a1a', whiteSpace: 'nowrap' };
 const pageCountStyle: React.CSSProperties = { fontFamily: "'Montserrat', sans-serif", fontSize: '11px', fontWeight: 400, letterSpacing: '2px', color: '#9a9590', textTransform: 'uppercase' };
 const dividerStyle: React.CSSProperties = { height: '1px', background: '#e8e4de', margin: '0 48px' };
 
@@ -1610,7 +1608,7 @@ const sidebarStyle: React.CSSProperties = { width: '220px', flexShrink: 0, paddi
 
 /* Sidebar filter sections */
 const filterSectionStyle: React.CSSProperties = { borderBottom: '1px solid #e8e4de', paddingBottom: '0' };
-const filterSectionHeaderStyle: React.CSSProperties = { width: '100%', background: 'none', border: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', fontFamily: "'Montserrat',sans-serif", fontSize: '10px', fontWeight: 500, letterSpacing: '2.5px', color: '#1a1a1a', cursor: 'pointer', textAlign: 'left' as const };
+const filterSectionHeaderStyle: React.CSSProperties = { width: '100%', background: 'none', border: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 0', fontFamily: "'Oswald', sans-serif", fontSize: '14px', fontWeight: 600, letterSpacing: '2px', textTransform: 'uppercase' as const, color: '#1a1a1a', cursor: 'pointer', textAlign: 'left' as const };
 const filterChevronStyle: React.CSSProperties = { fontSize: '10px', color: '#9a9590' };
 const filterSectionBodyStyle: React.CSSProperties = { display: 'flex', flexDirection: 'column' as const, gap: '10px', paddingBottom: '16px' };
 const filterCheckboxLabelStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: '8px', fontFamily: "'Montserrat',sans-serif", fontSize: '11px', fontWeight: 300, color: '#1a1a1a', cursor: 'pointer' };

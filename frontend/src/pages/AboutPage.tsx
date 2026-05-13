@@ -211,7 +211,7 @@ const AboutPage: React.FC = () => {
 /* ─── CSS ─────────────────────────────────────────────────────────────── */
 
 const fonts = `
-  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;700&family=Oswald:wght@500;600;700&display=swap');
   * { margin: 0; padding: 0; box-sizing: border-box; }
 `;
 
@@ -259,10 +259,12 @@ const heroOverlineStyle: React.CSSProperties = {
 };
 
 const heroTitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: 'clamp(48px, 7vw, 80px)',
-  fontWeight: 300,
-  lineHeight: 1.1,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: 'clamp(40px, 6vw, 70px)',
+  fontWeight: 700,
+  lineHeight: 1.05,
+  letterSpacing: '2px',
+  textTransform: 'uppercase',
   color: '#1a1a1a',
   marginBottom: '32px',
 };
@@ -311,10 +313,12 @@ const sectionOverlineStyle: React.CSSProperties = {
 };
 
 const sectionTitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: 'clamp(36px, 5vw, 56px)',
-  fontWeight: 300,
-  lineHeight: 1.2,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: 'clamp(28px, 4vw, 46px)',
+  fontWeight: 700,
+  lineHeight: 1.1,
+  letterSpacing: '2px',
+  textTransform: 'uppercase',
   color: '#1a1a1a',
 };
 
@@ -365,9 +369,11 @@ const techLabelStyle: React.CSSProperties = {
 };
 
 const techTitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: '28px',
-  fontWeight: 400,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: '22px',
+  fontWeight: 600,
+  letterSpacing: '1.5px',
+  textTransform: 'uppercase',
   color: '#1a1a1a',
   lineHeight: 1.2,
 };
@@ -418,9 +424,11 @@ const valueNumStyle: React.CSSProperties = {
 };
 
 const valueTitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: '26px',
-  fontWeight: 400,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: '20px',
+  fontWeight: 600,
+  letterSpacing: '1.5px',
+  textTransform: 'uppercase',
   color: '#1a1a1a',
   lineHeight: 1.2,
 };
@@ -589,10 +597,12 @@ const finalCTAOverlineStyle: React.CSSProperties = {
 };
 
 const finalCTATitleStyle: React.CSSProperties = {
-  fontFamily: "'Cormorant Garamond', serif",
-  fontSize: 'clamp(36px, 5vw, 56px)',
-  fontWeight: 300,
-  lineHeight: 1.2,
+  fontFamily: "'Oswald', sans-serif",
+  fontSize: 'clamp(28px, 4vw, 46px)',
+  fontWeight: 700,
+  lineHeight: 1.1,
+  letterSpacing: '2px',
+  textTransform: 'uppercase',
   color: '#1a1a1a',
   marginBottom: '48px',
 };

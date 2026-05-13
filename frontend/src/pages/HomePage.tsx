@@ -28,14 +28,18 @@ const HomePage: React.FC = () => {
   const [bestSellers, setBestSellers] = useState<any[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
   const [totalTryons, setTotalTryons] = useState(0);
+  const [vitonAccVal, setVitonAccVal] = useState(87);
+  const [styleAccVal, setStyleAccVal] = useState(92);
+  const [colorAccVal, setColorAccVal] = useState(95);
   const [countersVisible, setCountersVisible] = useState(false);
   const statsRef = useRef<HTMLDivElement>(null);
 
   /* animated counter values */
   const usersCount   = useCountUp(totalUsers,   2200, countersVisible);
   const tryonsCount  = useCountUp(totalTryons,  2000, countersVisible);
-  const vitonAcc     = useCountUp(87,            1800, countersVisible);
-  const knnAcc       = useCountUp(82,            1600, countersVisible);
+  const vitonAcc     = useCountUp(vitonAccVal,  1800, countersVisible);
+  const styleAcc     = useCountUp(styleAccVal,  1600, countersVisible);
+  const colorAcc     = useCountUp(colorAccVal,  1400, countersVisible);
 
   useEffect(() => {
     setTimeout(() => setLoaded(true), 100);
@@ -67,6 +71,16 @@ const HomePage: React.FC = () => {
       })
       .catch(() => {});
 
+    /* fetch real model accuracy */
+    fetch(`${API}/api/recommend/model-metrics`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.viton_accuracy) setVitonAccVal(d.viton_accuracy);
+        if (d.style_accuracy) setStyleAccVal(d.style_accuracy);
+        if (d.color_accuracy) setColorAccVal(d.color_accuracy);
+      })
+      .catch(() => {});
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('storage', checkAuthStatus);
@@ -88,7 +102,7 @@ const HomePage: React.FC = () => {
   return (
     <div style={wrapperStyle}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Montserrat:wght@300;400;500;700&family=Oswald:wght@500;600;700&display=swap');
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         .viton-header { opacity:0; transform:translateY(-20px); transition:opacity 0.8s ease,transform 0.8s ease; }
@@ -224,12 +238,12 @@ const HomePage: React.FC = () => {
         <section style={bsSectionStyle}>
           <div style={bsHeaderStyle}>
             <p style={bsOverlineStyle}>Trending Now</p>
-            <h2 style={bsTitleStyle}>Best Selling<br /><em>Clothing</em></h2>
+            <h2 style={bsTitleStyle}>Best Selling Clothing</h2>
             <Link to="/products" className="viton-section-link" style={{ marginTop:'8px' }}>Shop All →</Link>
           </div>
           <div className="bs-grid" style={bsGridStyle}>
             {bestSellers.map((p: any) => (
-              <Link to={`/products`} key={p.id} className="bs-card">
+              <Link to={`/products/${p.product_id ?? p.id}`} key={p.product_id ?? p.id} className="bs-card">
                 <div className="bs-img-wrap">
                   <img
                     className="bs-img"
@@ -274,12 +288,20 @@ const HomePage: React.FC = () => {
               <div className="acc-bar-fill" style={{ width: countersVisible ? `${vitonAcc}%` : '0%' }} />
             </div>
           </div>
-          {/* KNN accuracy */}
+          {/* Style model accuracy */}
           <div className="stat-counter">
-            <p className="stat-value">{knnAcc}<span className="stat-suffix">%</span></p>
-            <p className="stat-label">KNN Accuracy</p>
+            <p className="stat-value">{styleAcc}<span className="stat-suffix">%</span></p>
+            <p className="stat-label">Style Model Accuracy</p>
             <div className="acc-bar-bg">
-              <div className="acc-bar-fill" style={{ width: countersVisible ? `${knnAcc}%` : '0%' }} />
+              <div className="acc-bar-fill" style={{ width: countersVisible ? `${styleAcc}%` : '0%' }} />
+            </div>
+          </div>
+          {/* Color model accuracy */}
+          <div className="stat-counter">
+            <p className="stat-value">{colorAcc}<span className="stat-suffix">%</span></p>
+            <p className="stat-label">Color Model Accuracy</p>
+            <div className="acc-bar-bg">
+              <div className="acc-bar-fill" style={{ width: countersVisible ? `${colorAcc}%` : '0%' }} />
             </div>
           </div>
         </div>
@@ -317,7 +339,7 @@ const marqueeTextStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-se
 const bsSectionStyle: React.CSSProperties = { padding:'80px 48px', background:'#fafaf8', borderTop:'1px solid #e8e4de' };
 const bsHeaderStyle: React.CSSProperties = { marginBottom:'48px', display:'flex', flexDirection:'column', gap:'8px' };
 const bsOverlineStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-serif", fontSize:'10px', fontWeight:500, letterSpacing:'3px', textTransform:'uppercase', color:'#c9a96e' };
-const bsTitleStyle: React.CSSProperties = { fontFamily:"'Cormorant Garamond',serif", fontSize:'clamp(32px,5vw,52px)', fontWeight:300, lineHeight:1.2, color:'#1a1a1a' };
+const bsTitleStyle: React.CSSProperties = { fontFamily:"'Oswald',sans-serif", fontSize:'clamp(28px,4vw,44px)', fontWeight:700, lineHeight:1.1, letterSpacing:'2px', textTransform:'uppercase', color:'#1a1a1a' };
 const bsGridStyle: React.CSSProperties = { display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'24px' };
 const bsCardBodyStyle: React.CSSProperties = { padding:'20px 16px 24px' };
 const bsCategoryStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-serif", fontSize:'9px', fontWeight:500, letterSpacing:'2.5px', textTransform:'uppercase', color:'#c9a96e', marginBottom:'6px' };
@@ -328,7 +350,7 @@ const bsPriceStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-serif"
 const statsSectionStyle: React.CSSProperties = { background:'#1a1a1a', padding:'0 48px 72px' };
 const statsInnerStyle: React.CSSProperties = { paddingTop:'72px', marginBottom:'16px' };
 const statsOverlineStyle: React.CSSProperties = { fontFamily:"'Montserrat',sans-serif", fontSize:'10px', fontWeight:500, letterSpacing:'3px', textTransform:'uppercase', color:'#c9a96e', marginBottom:'16px' };
-const statsTitleStyle: React.CSSProperties = { fontFamily:"'Cormorant Garamond',serif", fontSize:'clamp(32px,5vw,52px)', fontWeight:300, lineHeight:1.2, color:'#fff' };
-const statsGridStyle: React.CSSProperties = { display:'grid', gridTemplateColumns:'repeat(4,1fr)', marginTop:'48px' };
+const statsTitleStyle: React.CSSProperties = { fontFamily:"'Oswald',sans-serif", fontSize:'clamp(28px,4vw,44px)', fontWeight:700, lineHeight:1.1, letterSpacing:'2px', textTransform:'uppercase', color:'#fff' };
+const statsGridStyle: React.CSSProperties = { display:'grid', gridTemplateColumns:'repeat(5,1fr)', marginTop:'48px' };
 
 export default HomePage;

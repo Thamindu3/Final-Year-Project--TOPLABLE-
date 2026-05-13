@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import axios from 'axios';
+import { useSearchParams } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 
 interface PersonImage {
@@ -31,8 +32,29 @@ const VirtualTryOnPage: React.FC = () => {
   const clothInputRef = useRef<HTMLInputElement>(null);
   const personUploadRef = useRef<HTMLInputElement>(null);
   const API_BASE_URL = 'http://localhost:8000';
+  const [searchParams] = useSearchParams();
 
   useEffect(() => { loadPersonImages(); }, []);
+
+  // Auto-load product cloth when arriving from body-fit page with ?productId=
+  useEffect(() => {
+    const productId = searchParams.get('productId');
+    if (!productId) return;
+    const loadProductCloth = async () => {
+      try {
+        const res = await axios.get(`${API_BASE_URL}/api/products/${productId}`);
+        const product = res.data;
+        const imageUrl = product.image_url || product.image_path;
+        if (!imageUrl) return;
+        const fullUrl = imageUrl.startsWith('http') ? imageUrl : `${API_BASE_URL}${imageUrl}`;
+        setClothPreview(fullUrl);
+        await axios.post(`${API_BASE_URL}/upload/cloth-from-static`, {}, {
+          params: { image_url: fullUrl }, timeout: 30000,
+        });
+      } catch (_) {}
+    };
+    loadProductCloth();
+  }, [searchParams]);
 
   const loadPersonImages = async () => {
     setLoadingPersons(true);
@@ -469,21 +491,6 @@ const VirtualTryOnPage: React.FC = () => {
           </section>
         )}
 
-        {/* ── FEATURES ── */}
-        <section className="vto-features">
-          {[
-            { icon: '✦', title: 'AI-Powered', desc: 'VITON-HD technology for photorealistic results' },
-            { icon: '⬆', title: 'Your Photos', desc: 'Upload any photo with automatic preprocessing' },
-            { icon: '⚡', title: 'Fast Results', desc: 'Results delivered in under 2 minutes' },
-            { icon: '◈', title: 'High Quality', desc: 'Accurate details, true-to-life color rendering' },
-          ].map((f, i) => (
-            <div key={i} className="vto-feature">
-              <span className="vto-feature-icon">{f.icon}</span>
-              <h3 className="vto-feature-title">{f.title}</h3>
-              <p className="vto-feature-desc">{f.desc}</p>
-            </div>
-          ))}
-        </section>
       </main>
     </div>
   );
@@ -491,7 +498,7 @@ const VirtualTryOnPage: React.FC = () => {
 
 /* ─── CSS ──────────────────────────────────────────────────────────── */
 const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Oswald:wght@500;600;700&display=swap');
 
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -530,18 +537,17 @@ const CSS = `
 
   .vto-root {
     font-family: 'Inter', sans-serif;
-    background: #0f0f11;
-    color: #e8e4de;
+    background: #fafaf8;
+    color: #1a1a1a;
     min-height: 100vh;
   }
 
   /* ── HERO ── */
   .vto-hero {
-    padding: 100px 48px 72px;
+    padding: 72px 48px 48px;
     text-align: center;
-    background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(201,169,110,0.12) 0%, transparent 70%),
-                linear-gradient(180deg, #16141a 0%, #0f0f11 100%);
-    border-bottom: 1px solid rgba(255,255,255,0.06);
+    background: #fff;
+    border-bottom: 1px solid #e8e4de;
     position: relative;
     overflow: hidden;
   }
@@ -561,23 +567,24 @@ const CSS = `
     animation-delay: 0.1s;
   }
   .vto-hero-title {
-    font-family: 'Cormorant Garamond', serif;
-    font-size: clamp(52px, 8vw, 88px);
-    font-weight: 300;
+    font-family: 'Oswald', sans-serif;
+    font-size: clamp(36px, 6vw, 70px);
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
     line-height: 1;
-    color: #fff;
+    color: #1a1a1a;
     margin-bottom: 20px;
     animation: fadeUp 0.7s ease both;
     animation-delay: 0.2s;
   }
   .vto-hero-title span {
-    font-style: italic;
     color: #c9a96e;
   }
   .vto-hero-sub {
     font-size: 14px;
     font-weight: 300;
-    color: #8b8580;
+    color: #6b6560;
     max-width: 500px;
     margin: 0 auto 48px;
     line-height: 1.8;
