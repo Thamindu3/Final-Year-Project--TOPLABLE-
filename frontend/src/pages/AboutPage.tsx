@@ -150,41 +150,6 @@ const AboutPage: React.FC = () => {
         </div>
       </section>
 
-      {/* ── RESEARCH SECTION ── */}
-      <section style={researchSectionStyle}>
-        <div style={researchInnerStyle}>
-          <div style={researchColStyle}>
-            <p style={sectionOverlineStyle}>Research & Development</p>
-            <h2 style={sectionTitleStyle}>
-              Academic
-              <br />
-              <em>Foundation</em>
-            </h2>
-          </div>
-          <div style={researchTextColStyle}>
-            <p style={bodyTextStyle}>
-              Our work is built on peer-reviewed research in computer vision, virtual try-on
-              networks, and fashion recommendation systems. We have studied approaches from VITON (Han
-              et al., 2018) to recent context-aware models adapted for South Asian populations.
-            </p>
-            <p style={bodyTextStyle}>
-              Key research areas include image-based garment transfer, pose estimation, human
-              parsing, content-based filtering, and cold-start recommendation challenges specific to
-              emerging e-commerce markets.
-            </p>
-
-            <div style={researchLinksStyle}>
-              <a href="#" style={researchLinkStyle}>
-                Read the Full Report →
-              </a>
-              <a href="#" style={researchLinkStyle}>
-                View Bibliography →
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* ── FINAL CTA ── */}
       <section style={finalCTAStyle}>
         <div style={finalCTAInnerStyle}>
@@ -526,51 +491,6 @@ const teamMetaValueStyle: React.CSSProperties = {
   fontSize: '13px',
   fontWeight: 400,
   color: '#1a1a1a',
-};
-
-/* Research */
-const researchSectionStyle: React.CSSProperties = {
-  padding: '100px 48px',
-  borderTop: '1px solid #e8e4de',
-};
-
-const researchInnerStyle: React.CSSProperties = {
-  maxWidth: '1200px',
-  margin: '0 auto',
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-  gap: '64px',
-  alignItems: 'flex-start',
-};
-
-const researchColStyle: React.CSSProperties = {};
-
-const researchTextColStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '24px',
-};
-
-const researchLinksStyle: React.CSSProperties = {
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '16px',
-  marginTop: '16px',
-};
-
-const researchLinkStyle: React.CSSProperties = {
-  fontFamily: "'Montserrat', sans-serif",
-  fontSize: '11px',
-  fontWeight: 500,
-  letterSpacing: '2px',
-  textTransform: 'uppercase',
-  color: '#1a1a1a',
-  textDecoration: 'none',
-  borderBottom: '1px solid #1a1a1a',
-  paddingBottom: '4px',
-  display: 'inline-block',
-  width: 'fit-content',
-  transition: 'color 0.3s, border-color 0.3s',
 };
 
 /* Final CTA */
